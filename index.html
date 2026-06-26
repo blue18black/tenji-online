@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>点字クイズ</title>
+<style>
+  :root {
+    --ink: #1a1a18;
+    --ink2: #4a4a46;
+    --ink3: #8a8a84;
+    --paper: #f5f3ee;
+    --card: #ffffff;
+    --dot-on: #1a1a18;
+    --dot-off: #e0ddd6;
+    --accent: #2a5caa;
+    --accent-light: #e8eef8;
+    --hit: #1a7a45;
+    --hit-light: #e6f4ec;
+    --miss: #b83030;
+    --radius: 14px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Helvetica Neue', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; flex-direction: column; min-height: 100dvh; padding: 24px 20px calc(24px + var(--safe-bottom)); }
+  .screen.active { display: flex; }
+
+  /* ── HEADER ── */
+  .logo {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--ink3);
+    text-transform: uppercase;
+    margin-bottom: 32px;
+  }
+
+  /* ── TITLE SCREEN ── */
+  .title-hero {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 32px;
+  }
+
+  .braille-title {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+
+  .braille-char {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    padding: 8px;
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--dot-off);
+    transition: background 0.15s;
+  }
+
+  .dot.on { background: var(--dot-on); }
+
+  h1 {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    text-align: center;
+  }
+
+  h1 span {
+    color: var(--accent);
+  }
+
+  .subtitle {
+    font-size: 15px;
+    color: var(--ink2);
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.1s;
+    letter-spacing: 0.01em;
+  }
+
+  .btn:active { transform: scale(0.97); opacity: 0.85; }
+
+  .btn-primary { background: var(--ink); color: #fff; }
+  .btn-secondary { background: var(--card); color: var(--ink); border: 1.5px solid #d8d5ce; }
+  .btn-accent { background: var(--accent); color: #fff; }
+  .btn-hit { background: var(--hit); color: #fff; font-size: 20px; padding: 24px; border-radius: 20px; }
+  .btn-sm { padding: 10px 16px; font-size: 14px; border-radius: 10px; width: auto; }
+
+  .btn-stack { display: flex; flex-direction: column; gap: 10px; }
+
+  /* ── INPUT ── */
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  label { font-size: 13px; font-weight: 500; color: var(--ink2); }
+
+  input[type="text"] {
+    padding: 14px 16px;
+    font-size: 18px;
+    font-family: inherit;
+    border: 1.5px solid #d8d5ce;
+    border-radius: var(--radius);
+    background: var(--card);
+    color: var(--ink);
+    outline: none;
+    letter-spacing: 0.1em;
+    transition: border-color 0.15s;
+  }
+
+  input:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--ink3); letter-spacing: 0; font-size: 15px; }
+
+  /* ── ROOM CODE DISPLAY ── */
+  .room-code-display {
+    background: var(--accent-light);
+    border: 1.5px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+  }
+
+  .room-code-label { font-size: 12px; letter-spacing: 0.12em; color: var(--accent); text-transform: uppercase; margin-bottom: 8px; }
+  .room-code-num { font-size: 40px; font-weight: 700; letter-spacing: 0.2em; color: var(--ink); }
+
+  /* ── PLAYER LIST ── */
+  .player-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 16px 0;
+  }
+
+  .player-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 15px;
+    border: 1px solid #eae8e2;
+  }
+
+  .player-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--hit);
+    flex-shrink: 0;
+  }
+
+  .player-score {
+    margin-left: auto;
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 14px;
+  }
+
+  /* ── GAME SCREEN ── */
+  .game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+
+  .round-badge {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--ink3);
+    text-transform: uppercase;
+  }
+
+  .timer-bar {
+    height: 3px;
+    background: #e0ddd6;
+    border-radius: 2px;
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+
+  .timer-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.1s linear, background 0.3s;
+  }
+
+  /* ── BIG BRAILLE DISPLAY ── */
+  .braille-display {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    padding: 32px 0;
+    flex-wrap: wrap;
+  }
+
+  .braille-cell {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    background: var(--card);
+    border-radius: 16px;
+    padding: 14px;
+    border: 1.5px solid #e0ddd6;
+  }
+
+  .braille-cell .dot {
+    width: 16px;
+    height: 16px;
+  }
+
+  .hint-text {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink3);
+    margin-bottom: 24px;
+  }
+
+  /* ── ANSWER AREA ── */
+  .answer-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+
+  .buzz-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .buzz-btn {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: none;
+    background: var(--ink);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: transform 0.1s, background 0.2s;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    letter-spacing: 0.02em;
+  }
+
+  .buzz-btn .buzz-icon { font-size: 36px; line-height: 1; }
+  .buzz-btn:active { transform: scale(0.93); }
+  .buzz-btn.hit { background: var(--hit); }
+  .buzz-btn.miss { background: var(--miss); }
+  .buzz-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* ── ANSWER GRID (choices) ── */
+  .answer-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .choice-btn {
+    padding: 16px 8px;
+    border: 1.5px solid #d8d5ce;
+    border-radius: 12px;
+    background: var(--card);
+    font-size: 18px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.12s;
+    color: var(--ink);
+  }
+
+  .choice-btn:active { transform: scale(0.96); background: var(--accent-light); border-color: var(--accent); }
+  .choice-btn.correct { background: var(--hit-light); border-color: var(--hit); color: var(--hit); }
+  .choice-btn.wrong { background: #fce8e8; border-color: var(--miss); color: var(--miss); }
+  .choice-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ── RESULT FEEDBACK ── */
+  .feedback-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .feedback-overlay.show { display: flex; }
+
+  .feedback-pill {
+    font-size: 22px;
+    font-weight: 700;
+    padding: 16px 32px;
+    border-radius: 50px;
+    animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .feedback-pill.correct { background: var(--hit); color: #fff; }
+  .feedback-pill.wrong { background: var(--miss); color: #fff; }
+  .feedback-pill.info { background: var(--ink); color: #fff; }
+
+  @keyframes pop {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  /* ── WAITING / STATUS ── */
+  .status-card {
+    background: var(--card);
+    border: 1px solid #eae8e2;
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+  }
+
+  .status-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .status-sub { font-size: 13px; color: var(--ink3); }
+
+  .waiting-dots {
+    display: inline-flex;
+    gap: 5px;
+    margin-top: 12px;
+  }
+
+  .waiting-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ink3);
+    animation: blink 1.2s ease-in-out infinite;
+  }
+
+  .waiting-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .waiting-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes blink {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  /* ── SCORES ── */
+  .score-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--card);
+    border-radius: 12px;
+    border: 1px solid #eae8e2;
+    gap: 12px;
+  }
+
+  .score-rank { font-size: 20px; font-weight: 700; width: 32px; color: var(--ink3); }
+  .score-rank.first { color: #c4860a; }
+  .score-rank.second { color: #6a6a66; }
+  .score-name { font-size: 16px; flex: 1; }
+  .score-pts { font-size: 20px; font-weight: 700; color: var(--accent); }
+  .score-pts span { font-size: 13px; font-weight: 400; color: var(--ink3); }
+
+  /* ── SECTION HEADINGS ── */
+  .section-head {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink3);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    margin-top: 20px;
+  }
+
+  .divider { height: 1px; background: #e8e5de; margin: 20px 0; }
+
+  /* ── ANSWER REVEAL ── */
+  .answer-reveal {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+    border: 1.5px solid #e0ddd6;
+  }
+
+  .answer-label { font-size: 13px; color: var(--ink3); margin-bottom: 6px; }
+  .answer-value { font-size: 28px; font-weight: 700; }
+
+  .winner-announce {
+    background: var(--hit-light);
+    border: 1.5px solid var(--hit);
+    border-radius: var(--radius);
+    padding: 16px;
+    text-align: center;
+  }
+
+  .winner-announce .winner-label { font-size: 12px; color: var(--hit); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+  .winner-announce .winner-name { font-size: 22px; font-weight: 700; color: var(--hit); }
+
+  /* ── FIREBASE CONFIG NOTICE ── */
+  .config-notice {
+    background: #fffbeb;
+    border: 1.5px solid #f59e0b;
+    border-radius: var(--radius);
+    padding: 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #78350f;
+    display: none;
+  }
+
+  .config-notice.show { display: block; }
+  .config-notice strong { display: block; margin-bottom: 4px; font-size: 14px; }
+  .config-notice code {
+    background: #fef3c7;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+  }
+
+  /* ── ROLE BADGE ── */
+  .role-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--accent-light);
+    color: var(--accent);
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  .spacer { flex: 1; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════
+     SCREEN: TOP
+═════════════════════════════════ -->
+<div id="screen-top" class="screen active">
+  <div class="logo">点字クイズ</div>
+
+  <div class="title-hero">
+    <!-- Decorative braille dots -->
+    <div class="braille-title" id="title-braille"></div>
+
+    <h1>早押し<span>点字</span>クイズ</h1>
+    <p class="subtitle">点字を読んで、一番早く答えを<br>押したプレイヤーが勝ち！</p>
+  </div>
+
+  <div id="firebase-notice" class="config-notice">
+    <strong>⚙ Firebase の設定が必要です</strong>
+    このアプリはFirebase Realtime Databaseを使います。<br>
+    下の「Firebaseの設定方法」を確認してから<code>firebaseConfig</code>を書き換えてください。
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="btn-stack">
+    <button class="btn btn-primary" onclick="showCreateRoom()">ルームを作る（ホスト）</button>
+    <button class="btn btn-secondary" onclick="showJoinRoom()">ルームに参加する</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     SCREEN: CREATE ROOM
+═════════════════════════════════ -->
+<div id="screen-create" class="screen">
+  <div class="logo">ルーム作成</div>
+
+  <div class="field">
+    <label>あなたの名前</label>
+    <input type="text" id="host-name" placeholder="例: さくら" maxlength="10">
+  </div>
+
+  <div class="section-head" style="margin-top:24px">問題数</div>
+  <div style="display:flex; gap:8px">
+    <button class="btn btn-secondary btn-sm" id="q5" onclick="setQCount(5)" style="flex:1">5問</button>
+    <button class="btn btn-primary btn-sm" id="q10" onclick="setQCount(10)" style="flex:1">10問</button>
+    <button class="btn btn-secondary btn-sm" id="q15" onclick="setQCount(15)" style="flex:1">15問</button>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="btn-stack">
+    <button class="btn btn-accent" onclick="createRoom()">ルームを作成する</button>
+    <button class="btn btn-secondary" onclick="showScreen('screen-top')">もどる</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     SCREEN: JOIN ROOM
+═════════════════════════════════ -->
+<div id="screen-join" class="screen">
+  <div class="logo">参加</div>
+
+  <div class="field">
+    <label>あなたの名前</label>
+    <input type="text" id="player-name" placeholder="例: たろう" maxlength="10">
+  </div>
+
+  <div class="field" style="margin-top:16px">
+    <label>ルームコード（6桁）</label>
+    <input type="text" id="room-code-input" placeholder="000000" maxlength="6"
+           inputmode="numeric" pattern="[0-9]*"
+           oninput="this.value=this.value.replace(/\D/g,'')">
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="btn-stack">
+    <button class="btn btn-accent" onclick="joinRoom()">参加する</button>
+    <button class="btn btn-secondary" onclick="showScreen('screen-top')">もどる</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     SCREEN: LOBBY (HOST)
+═════════════════════════════════ -->
+<div id="screen-lobby-host" class="screen">
+  <div class="logo">ロビー <span class="role-badge">ホスト</span></div>
+
+  <div class="room-code-display">
+    <div class="room-code-label">ルームコード</div>
+    <div class="room-code-num" id="display-room-code">——</div>
+  </div>
+
+  <p style="font-size:13px; color:var(--ink3); text-align:center; margin-top:8px">このコードを参加者に伝えてください</p>
+
+  <div class="section-head">参加者</div>
+  <div id="host-player-list" class="player-list"></div>
+
+  <div class="spacer"></div>
+
+  <div class="btn-stack">
+    <button class="btn btn-accent" id="start-btn" onclick="startGame()">ゲームスタート</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     SCREEN: LOBBY (PLAYER)
+═════════════════════════════════ -->
+<div id="screen-lobby-player" class="screen">
+  <div class="logo">ロビー</div>
+
+  <div class="status-card">
+    <div class="status-title">ホストの開始を待っています</div>
+    <div class="status-sub" id="lobby-room-info">ルームコード: ——</div>
+    <div class="waiting-dots"><span></span><span></span><span></span></div>
+  </div>
+
+  <div class="section-head">参加者</div>
+  <div id="player-player-list" class="player-list"></div>
+</div>
+
+<!-- ════════════════════════════════
+     SCREEN: GAME
+═════════════════════════════════ -->
+<div id="screen-game" class="screen">
+  <div class="game-header">
+    <span class="round-badge" id="round-label">問題 1 / 10</span>
+    <span style="font-size:13px; color:var(--ink3)" id="my-score-label">0点</span>
+  </div>
+
+  <div class="timer-bar"><div class="timer-fill" id="timer-fill"></div></div>
+
+  <!-- Braille display -->
+  <div class="braille-display" id="game-braille"></div>
+
+  <div class="hint-text" id="hint-text">点字を読んで早押し！</div>
+
+  <!-- Answer choices -->
+  <div class="answer-section">
+    <div class="answer-grid" id="choice-grid"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     SCREEN: ROUND RESULT
+═════════════════════════════════ -->
+<div id="screen-round-result" class="screen">
+  <div class="logo">結果</div>
+
+  <div class="answer-reveal" style="margin-bottom:16px">
+    <div class="answer-label">正解</div>
+    <div class="answer-value" id="result-answer">——</div>
+  </div>
+
+  <div id="winner-box" class="winner-announce" style="margin-bottom:16px">
+    <div class="winner-label">最速で正解！</div>
+    <div class="winner-name" id="winner-name">——</div>
+  </div>
+
+  <div class="section-head">スコア</div>
+  <div id="round-score-list" style="display:flex; flex-direction:column; gap:8px"></div>
+
+  <div class="spacer"></div>
+
+  <div id="host-next-btn" style="display:none">
+    <button class="btn btn-accent" onclick="nextRound()">次の問題へ</button>
+  </div>
+  <div id="player-waiting-next" class="status-card" style="display:none; text-align:center">
+    <div class="status-sub">ホストが次の問題を出すのを待っています</div>
+    <div class="waiting-dots"><span></span><span></span><span></span></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     SCREEN: FINAL
+═════════════════════════════════ -->
+<div id="screen-final" class="screen">
+  <div class="logo">最終結果</div>
+
+  <div style="text-align:center; padding: 24px 0 16px">
+    <div style="font-size:48px; margin-bottom:8px">🏆</div>
+    <div style="font-size:22px; font-weight:700" id="final-winner-name">——</div>
+    <div style="font-size:14px; color:var(--ink3); margin-top:4px">優勝！</div>
+  </div>
+
+  <div class="section-head">最終スコア</div>
+  <div id="final-score-list" style="display:flex; flex-direction:column; gap:8px"></div>
+
+  <div class="spacer"></div>
+
+  <button class="btn btn-secondary" onclick="showScreen('screen-top'); location.reload()">タイトルにもどる</button>
+</div>
+
+<!-- ════════════════════════════════
+     FEEDBACK OVERLAY
+═════════════════════════════════ -->
+<div class="feedback-overlay" id="feedback-overlay">
+  <div class="feedback-pill" id="feedback-pill"></div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════
+     FIREBASE SDK
+     ↓ Replace the firebaseConfig below with yours!
+════════════════════════════════════════════════════ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, set, get, push, onValue, off, update, serverTimestamp, remove }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  ★ ここにあなたの Firebase 設定を貼り付けてください
+//    Firebase Console → プロジェクト設定 → マイアプリ → SDK の設定と構成
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// const firebaseConfig = {
+//   apiKey: "YOUR_API_KEY",
+//   authDomain: "YOUR_PROJECT.firebaseapp.com",
+//   databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+//   projectId: "YOUR_PROJECT",
+//   storageBucket: "YOUR_PROJECT.appspot.com",
+//   messagingSenderId: "YOUR_SENDER_ID",
+//   appId: "YOUR_APP_ID"
+// };
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyDfHzrDKQwtHULlDHEe_reY0h_gR4tEwGI",
+  authDomain: "tenji-game.firebaseapp.com",
+  databaseURL: "https://tenji-game-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "tenji-game",
+  storageBucket: "tenji-game.firebasestorage.app",
+  messagingSenderId: "620462137321",
+  appId: "1:620462137321:web:153f9984f7a3bc98ebf578",
+  measurementId: "G-DXTRC1KQLE"
+};
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// ─── Check if config is placeholder ───
+const isConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
+
+let app, db, auth;
+let authReady = Promise.resolve(null);
+
+if (isConfigured) {
+  app = initializeApp(firebaseConfig);
+  db = getDatabase(app);
+  auth = getAuth(app);
+
+  // ルーム/プレイヤーごとのIDをFirebase Authの匿名UIDにする。
+  // これでセキュリティルール側で「自分のデータだけ書き込める」を強制できる。
+  authReady = new Promise(resolve => {
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        myId = user.uid;
+        resolve(myId);
+      }
+    });
+    signInAnonymously(auth).catch(err => {
+      console.error('匿名ログインに失敗しました', err);
+      alert('ログインに失敗しました。ページを再読み込みしてください。');
+    });
+  });
+} else {
+  document.getElementById("firebase-notice").classList.add("show");
+}
+
+// ════════════════════════════════
+//  BRAILLE DATA
+// ════════════════════════════════
+// Braille cell: 6 dots [1,2,3,4,5,6] — top-left column = 1,2,3; top-right = 4,5,6
+const BRAILLE = {
+  'あ': [1],
+  'い': [1,2],
+  'う': [1,2,4,5],
+  'え': [1,4,5],
+  'お': [1,4],
+  'か': [1,3],
+  'き': [1,2,3],
+  'く': [1,2,3,4,5],
+  'け': [1,3,4,5],
+  'こ': [1,3,4],
+  'さ': [1,3,6],
+  'し': [1,2,3,6],
+  'す': [1,2,3,4,5,6],
+  'せ': [1,3,4,5,6],
+  'そ': [1,3,4,6],
+  'た': [1,5,6],
+  'ち': [1,2,5,6],
+  'つ': [1,4,5,6],
+  'て': [1,4,6],
+  'と': [1,6],
+  'な': [1,3,5,6],
+  'に': [1,2,3,5,6],
+  'ぬ': [1,2,3,4,5,6],
+  'ね': [1,3,4,5,6],
+  'の': [1,3,5],
+  'は': [1,2,5],
+  'ひ': [1,2,4],
+  'ふ': [1,2,4,6],
+  'へ': [1,4,6],
+  'ほ': [1,2,6],
+  'ま': [2,3,4,5,6],
+  'み': [2,3,4,5],
+  'む': [2,3,4,6],
+  'め': [2,3,4],
+  'も': [2,3,6],
+  'や': [1,3,4,5,6],
+  'ゆ': [1,2,3,4,5,6],
+  'よ': [1,4,5,6],
+  'ら': [1,2,3,4],
+  'り': [1,2,3,4,6],
+  'る': [1,2,3,4,5,6],
+  'れ': [1,2,3,4,5],
+  'ろ': [1,2,3,5],
+  'わ': [1,2,4,5,6],
+  'を': [1,2,4,6],
+  'ん': [2,3,4,5,6],
+};
+
+// Quiz questions: {question (kana), answer (display), choices}
+const ALL_QUESTIONS = [
+  { q: 'あ', a: 'あ', hint: '五十音 ア行', choices: ['あ','い','う','え'] },
+  { q: 'か', a: 'か', hint: '五十音 カ行', choices: ['か','き','く','こ'] },
+  { q: 'さ', a: 'さ', hint: '五十音 サ行', choices: ['さ','し','す','せ'] },
+  { q: 'た', a: 'た', hint: '五十音 タ行', choices: ['た','ち','つ','て'] },
+  { q: 'な', a: 'な', hint: '五十音 ナ行', choices: ['な','に','ぬ','ね'] },
+  { q: 'は', a: 'は', hint: '五十音 ハ行', choices: ['は','ひ','ふ','へ'] },
+  { q: 'ま', a: 'ま', hint: '五十音 マ行', choices: ['ま','み','む','め'] },
+  { q: 'や', a: 'や', hint: '五十音 ヤ行', choices: ['や','ゆ','よ','わ'] },
+  { q: 'ら', a: 'ら', hint: '五十音 ラ行', choices: ['ら','り','る','れ'] },
+  { q: 'わ', a: 'わ', hint: '五十音 ワ行', choices: ['わ','を','ん','あ'] },
+  { q: 'い', a: 'い', hint: 'ア行', choices: ['い','え','お','あ'] },
+  { q: 'う', a: 'う', hint: 'ア行', choices: ['う','お','あ','い'] },
+  { q: 'え', a: 'え', hint: 'ア行', choices: ['え','あ','い','う'] },
+  { q: 'お', a: 'お', hint: 'ア行', choices: ['お','う','え','あ'] },
+  { q: 'き', a: 'き', hint: 'カ行', choices: ['き','く','か','け'] },
+];
+
+// ════════════════════════════════
+//  STATE
+// ════════════════════════════════
+let myId = null;
+let myName = '';
+let roomId = '';
+let isHost = false;
+let questionCount = 10;
+let currentQuestions = [];
+let currentRound = 0;
+let myScore = 0;
+let timerInterval = null;
+let timerEnd = null;
+let answered = false;
+let listeners = {};
+
+// ════════════════════════════════
+//  UTIL
+// ════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function genRoomCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function showFeedback(msg, type, duration = 1200) {
+  const overlay = document.getElementById('feedback-overlay');
+  const pill = document.getElementById('feedback-pill');
+  pill.textContent = msg;
+  pill.className = 'feedback-pill ' + type;
+  overlay.classList.add('show');
+  setTimeout(() => overlay.classList.remove('show'), duration);
+}
+
+// ════════════════════════════════
+//  BRAILLE RENDER
+// ════════════════════════════════
+function renderBrailleChar(char, large = false) {
+  const dots = BRAILLE[char] || [];
+  const cell = document.createElement('div');
+  cell.className = large ? 'braille-cell' : 'braille-char';
+
+  // dot positions: [1,4, 2,5, 3,6] left-col then right-col, top to bottom
+  // Grid: row1=[1,4], row2=[2,5], row3=[3,6]
+  const positions = [1,4, 2,5, 3,6];
+  positions.forEach(pos => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (dots.includes(pos) ? ' on' : '');
+    cell.appendChild(d);
+  });
+  return cell;
+}
+
+function renderBrailleString(str, containerId, large = false) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  [...str].forEach(c => {
+    if (BRAILLE[c]) container.appendChild(renderBrailleChar(c, large));
+  });
+}
+
+// Title animation
+function animateTitleBraille() {
+  const chars = 'てんじ';
+  const container = document.getElementById('title-braille');
+  container.innerHTML = '';
+  [...chars].forEach(c => container.appendChild(renderBrailleChar(c, false)));
+}
+
+// ════════════════════════════════
+//  SCREEN NAVIGATION (global)
+// ════════════════════════════════
+window.showScreen = showScreen;
+window.showCreateRoom = () => showScreen('screen-create');
+window.showJoinRoom = () => showScreen('screen-join');
+
+window.setQCount = (n) => {
+  questionCount = n;
+  ['q5','q10','q15'].forEach(id => {
+    document.getElementById(id).className = 'btn btn-secondary btn-sm';
+  });
+  document.getElementById('q' + n).className = 'btn btn-primary btn-sm';
+};
+
+// ════════════════════════════════
+//  CREATE ROOM
+// ════════════════════════════════
+window.createRoom = async () => {
+  if (!isConfigured) {
+    alert('Firebase の設定が必要です。HTMLファイルの firebaseConfig を書き換えてください。');
+    return;
+  }
+  const name = document.getElementById('host-name').value.trim();
+  if (!name) { alert('名前を入力してください'); return; }
+
+  await authReady;
+  myName = name;
+  isHost = true;
+  roomId = genRoomCode();
+
+  const questions = shuffle(ALL_QUESTIONS).slice(0, questionCount).map((q, i) => ({
+    ...q,
+    choices: shuffle(q.choices),
+    index: i
+  }));
+
+  currentQuestions = questions;
+
+  await set(ref(db, `rooms/${roomId}`), {
+    host: myId,
+    status: 'lobby',
+    questionCount,
+    questions,
+    round: 0,
+    players: {
+      [myId]: { name, score: 0, joined: Date.now() }
+    }
+  });
+
+  document.getElementById('display-room-code').textContent = roomId;
+  listenLobbyHost();
+  showScreen('screen-lobby-host');
+};
+
+// ════════════════════════════════
+//  JOIN ROOM
+// ════════════════════════════════
+window.joinRoom = async () => {
+  if (!isConfigured) {
+    alert('Firebase の設定が必要です。HTMLファイルの firebaseConfig を書き換えてください。');
+    return;
+  }
+  const name = document.getElementById('player-name').value.trim();
+  const code = document.getElementById('room-code-input').value.trim();
+  if (!name) { alert('名前を入力してください'); return; }
+  if (code.length !== 6) { alert('6桁のコードを入力してください'); return; }
+
+  await authReady;
+  myName = name;
+  roomId = code;
+
+  const snap = await get(ref(db, `rooms/${roomId}`));
+  if (!snap.exists()) { alert('ルームが見つかりません'); return; }
+
+  await update(ref(db, `rooms/${roomId}/players/${myId}`), {
+    name, score: 0, joined: Date.now()
+  });
+
+  document.getElementById('lobby-room-info').textContent = 'ルームコード: ' + roomId;
+  listenLobbyPlayer();
+  showScreen('screen-lobby-player');
+};
+
+// ════════════════════════════════
+//  LOBBY LISTENERS
+// ════════════════════════════════
+function listenLobbyHost() {
+  const r = ref(db, `rooms/${roomId}/players`);
+  listeners.players = onValue(r, snap => {
+    const players = snap.val() || {};
+    renderPlayerList('host-player-list', players);
+  });
+
+  const statusRef = ref(db, `rooms/${roomId}/status`);
+  listeners.status = onValue(statusRef, snap => {
+    if (snap.val() === 'playing') {
+      off(ref(db, `rooms/${roomId}/players`), 'value', listeners.players);
+      off(statusRef, 'value', listeners.status);
+      listenGame();
+      showScreen('screen-game');
+    }
+  });
+}
+
+function listenLobbyPlayer() {
+  const r = ref(db, `rooms/${roomId}/players`);
+  listeners.players = onValue(r, snap => {
+    const players = snap.val() || {};
+    renderPlayerList('player-player-list', players);
+  });
+
+  const statusRef = ref(db, `rooms/${roomId}/status`);
+  listeners.status = onValue(statusRef, snap => {
+    if (snap.val() === 'playing') {
+      off(ref(db, `rooms/${roomId}/players`), 'value', listeners.players);
+      off(statusRef, 'value', listeners.status);
+      listenGame();
+      showScreen('screen-game');
+    }
+  });
+}
+
+function renderPlayerList(containerId, players) {
+  const list = document.getElementById(containerId);
+  list.innerHTML = '';
+  Object.values(players)
+    .sort((a, b) => a.joined - b.joined)
+    .forEach(p => {
+      const div = document.createElement('div');
+      div.className = 'player-item';
+      div.innerHTML = `<div class="player-dot"></div><span>${escapeHtml(p.name)}</span><span class="player-score">${p.score}点</span>`;
+      list.appendChild(div);
+    });
+}
+
+// ════════════════════════════════
+//  START GAME (Host)
+// ════════════════════════════════
+window.startGame = async () => {
+  await update(ref(db, `rooms/${roomId}`), {
+    status: 'playing',
+    round: 0
+  });
+  await startRound(0);
+};
+
+async function startRound(roundIdx) {
+  currentRound = roundIdx;
+  answered = false;
+  const q = currentQuestions[roundIdx];
+
+  await update(ref(db, `rooms/${roomId}`), {
+    round: roundIdx,
+    roundStatus: 'active',
+    roundAnswer: null,
+    roundWinner: null,
+    roundWinnerName: null,
+    roundStartTime: Date.now(),
+  });
+
+  await set(ref(db, `rooms/${roomId}/answers`), null);
+}
+
+// ════════════════════════════════
+//  GAME LISTENER
+// ════════════════════════════════
+function listenGame() {
+  const roomRef = ref(db, `rooms/${roomId}`);
+  listeners.game = onValue(roomRef, snap => {
+    const room = snap.val();
+    if (!room) return;
+
+    currentRound = room.round || 0;
+    currentQuestions = room.questions || [];
+
+    const q = currentQuestions[currentRound];
+    if (!q) return;
+
+    if (room.roundStatus === 'active') {
+      renderGameScreen(q, room);
+    } else if (room.roundStatus === 'result') {
+      renderRoundResult(room, q);
+    } else if (room.status === 'finished') {
+      renderFinalScreen(room);
+    }
+  });
+}
+
+function renderGameScreen(q, room) {
+  answered = false;
+  showScreen('screen-game');
+
+  document.getElementById('round-label').textContent =
+    `問題 ${currentRound + 1} / ${room.questionCount}`;
+  document.getElementById('my-score-label').textContent = myScore + '点';
+
+  renderBrailleString(q.q, 'game-braille', true);
+  document.getElementById('hint-text').textContent = '点字を読んで選んでください！';
+
+  // Choices
+  const grid = document.getElementById('choice-grid');
+  grid.innerHTML = '';
+  q.choices.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = c;
+    btn.onclick = () => submitAnswer(c, q);
+    grid.appendChild(btn);
+  });
+
+  // Timer (15 seconds)
+  startTimer(15000, room.roundStartTime || Date.now());
+}
+
+function startTimer(duration, startTime) {
+  clearInterval(timerInterval);
+  const fill = document.getElementById('timer-fill');
+
+  timerInterval = setInterval(() => {
+    const elapsed = Date.now() - startTime;
+    const pct = Math.max(0, 100 - (elapsed / duration) * 100);
+    fill.style.width = pct + '%';
+    fill.style.background = pct < 30 ? '#e05050' : 'var(--accent)';
+
+    if (pct <= 0) {
+      clearInterval(timerInterval);
+      if (isHost && !answered) {
+        // Time up — reveal result with no winner
+        revealResult(null, null, null);
+      }
+    }
+  }, 100);
+}
+
+// ════════════════════════════════
+//  SUBMIT ANSWER
+// ════════════════════════════════
+async function submitAnswer(choice, q) {
+  if (answered) return;
+  answered = true;
+
+  // Disable all buttons
+  document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
+
+  const ts = Date.now();
+  await set(ref(db, `rooms/${roomId}/answers/${myId}`), {
+    name: myName,
+    choice,
+    correct: choice === q.a,
+    ts
+  });
+
+  // Host checks for first correct answer
+  if (isHost) {
+    setTimeout(() => checkAnswers(q), 500);
+  }
+}
+
+async function checkAnswers(q) {
+  const snap = await get(ref(db, `rooms/${roomId}/answers`));
+  const answers = snap.val() || {};
+
+  let winner = null;
+  let winnerName = null;
+  let winnerTs = Infinity;
+
+  Object.entries(answers).forEach(([uid, ans]) => {
+    if (ans.correct && ans.ts < winnerTs) {
+      winner = uid;
+      winnerName = ans.name;
+      winnerTs = ans.ts;
+    }
+  });
+
+  if (winner) {
+    // Update score
+    const snap2 = await get(ref(db, `rooms/${roomId}/players/${winner}/score`));
+    const prevScore = snap2.val() || 0;
+    await set(ref(db, `rooms/${roomId}/players/${winner}/score`), prevScore + 1);
+    if (winner === myId) myScore = prevScore + 1;
+  }
+
+  await revealResult(q.a, winner, winnerName);
+}
+
+async function revealResult(answer, winner, winnerName) {
+  clearInterval(timerInterval);
+
+  const q = currentQuestions[currentRound];
+  await update(ref(db, `rooms/${roomId}`), {
+    roundStatus: 'result',
+    roundAnswer: answer || (q ? q.a : ''),
+    roundWinner: winner,
+    roundWinnerName: winnerName,
+  });
+}
+
+// ════════════════════════════════
+//  ROUND RESULT SCREEN
+// ════════════════════════════════
+async function renderRoundResult(room, q) {
+  clearInterval(timerInterval);
+  showScreen('screen-round-result');
+
+  document.getElementById('result-answer').textContent = room.roundAnswer || q.a;
+
+  const winnerBox = document.getElementById('winner-box');
+  const winnerNameEl = document.getElementById('winner-name');
+  if (room.roundWinner) {
+    winnerBox.style.display = 'block';
+    winnerNameEl.textContent = room.roundWinnerName + ' さん！';
+    if (room.roundWinner === myId) showFeedback('正解！ +1点', 'correct');
+  } else {
+    winnerBox.style.display = 'none';
+    showFeedback('時間切れ…', 'info');
+  }
+
+  // Scores
+  const snap = await get(ref(db, `rooms/${roomId}/players`));
+  const players = snap.val() || {};
+  const sorted = Object.values(players).sort((a, b) => b.score - a.score);
+
+  const list = document.getElementById('round-score-list');
+  list.innerHTML = '';
+  sorted.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'score-row';
+    const rankClass = i === 0 ? 'first' : i === 1 ? 'second' : '';
+    div.innerHTML = `
+      <div class="score-rank ${rankClass}">${i + 1}</div>
+      <div class="score-name">${escapeHtml(p.name)}</div>
+      <div class="score-pts">${p.score}<span>点</span></div>`;
+    list.appendChild(div);
+  });
+
+  // Host/player next button
+  const isLastRound = currentRound + 1 >= room.questionCount;
+  document.getElementById('host-next-btn').style.display = isHost ? 'block' : 'none';
+  document.getElementById('player-waiting-next').style.display = isHost ? 'none' : 'block';
+  if (isHost) {
+    const btn = document.querySelector('#host-next-btn button');
+    btn.textContent = isLastRound ? '最終結果を見る' : '次の問題へ';
+  }
+}
+
+// ════════════════════════════════
+//  NEXT ROUND (Host)
+// ════════════════════════════════
+window.nextRound = async () => {
+  const nextIdx = currentRound + 1;
+  if (nextIdx >= currentQuestions.length) {
+    await update(ref(db, `rooms/${roomId}`), { status: 'finished' });
+  } else {
+    await startRound(nextIdx);
+  }
+};
+
+// ════════════════════════════════
+//  FINAL SCREEN
+// ════════════════════════════════
+async function renderFinalScreen(room) {
+  clearInterval(timerInterval);
+  showScreen('screen-final');
+
+  const snap = await get(ref(db, `rooms/${roomId}/players`));
+  const players = snap.val() || {};
+  const sorted = Object.values(players).sort((a, b) => b.score - a.score);
+
+  document.getElementById('final-winner-name').textContent = (sorted[0]?.name || '—') + ' さん';
+
+  const list = document.getElementById('final-score-list');
+  list.innerHTML = '';
+  sorted.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'score-row';
+    const medals = ['🥇','🥈','🥉'];
+    div.innerHTML = `
+      <div class="score-rank ${i === 0 ? 'first' : ''}" style="font-size:22px">${medals[i] || (i+1)}</div>
+      <div class="score-name">${escapeHtml(p.name)}</div>
+      <div class="score-pts">${p.score}<span>点</span></div>`;
+    list.appendChild(div);
+  });
+}
+
+// ════════════════════════════════
+//  INIT
+// ════════════════════════════════
+window.setQCount(10); // default
+animateTitleBraille();
+
+</script>
+</body>
+</html>
