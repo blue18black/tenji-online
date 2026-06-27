@@ -6,27 +6,34 @@
 <title>点字クイズ</title>
 <style>
   :root {
-    --ink: #1a1a18;
-    --ink2: #4a4a46;
-    --ink3: #8a8a84;
-    --paper: #f5f3ee;
+    --ink: #2a1a4a;
+    --ink2: #5b4a7a;
+    --ink3: #9a8ac0;
+    --paper: #f2ecff;
     --card: #ffffff;
-    --dot-on: #1a1a18;
-    --dot-off: #e0ddd6;
-    --accent: #2a5caa;
-    --accent-light: #e8eef8;
-    --hit: #1a7a45;
-    --hit-light: #e6f4ec;
-    --miss: #b83030;
-    --radius: 14px;
+    --dot-on: #46178f;
+    --dot-off: #e4ddf7;
+    --accent: #1368ce;
+    --accent-light: #e6f0fb;
+    --hit: #26890c;
+    --hit-light: #e9f7e3;
+    --miss: #e21b3c;
+    --miss-light: #fde8ec;
+    --purple: #46178f;
+    --red: #e21b3c;
+    --yellow: #ffa602;
+    --blue: #1368ce;
+    --green: #26890c;
+    --radius: 16px;
+    --shadow-pop: 0 6px 0 rgba(0,0,0,0.18);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
   body {
-    font-family: 'Helvetica Neue', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
-    background: var(--paper);
+    font-family: 'Hiragino Sans', 'Yu Gothic UI', 'Helvetica Neue', sans-serif;
+    background: linear-gradient(160deg, #2a1a4a 0%, #46178f 45%, #7b2ff7 100%);
     color: var(--ink);
     min-height: 100dvh;
     display: flex;
@@ -34,69 +41,56 @@
   }
 
   /* ── SCREENS ── */
-  .screen { display: none; flex-direction: column; min-height: 100dvh; padding: 24px 20px calc(24px + var(--safe-bottom)); }
+  .screen { display: none; flex-direction: column; min-height: 100dvh; padding: 22px 18px calc(22px + var(--safe-bottom)); }
   .screen.active { display: flex; }
+  .screen-card {
+    background: var(--paper);
+    border-radius: 22px;
+    padding: 22px 18px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.25);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    width: 100%;
+    margin: 0 auto;
+  }
 
   /* ── HEADER ── */
   .logo {
-    font-size: 11px;
+    font-size: 12px;
+    font-weight: 700;
     letter-spacing: 0.15em;
-    color: var(--ink3);
+    color: var(--purple);
     text-transform: uppercase;
-    margin-bottom: 32px;
+    margin-bottom: 20px;
   }
 
   /* ── TITLE SCREEN ── */
   .title-hero {
-    flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 32px;
-  }
-
-  .braille-title {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
+    gap: 18px;
     margin-bottom: 8px;
   }
 
-  .braille-char {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 5px;
-    padding: 8px;
-  }
-
-  .dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--dot-off);
-    transition: background 0.15s;
-  }
-
-  .dot.on { background: var(--dot-on); }
+  .title-braille { display: flex; gap: 10px; justify-content: center; margin-bottom: 4px; }
+  .title-cell { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 6px; }
+  .title-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot-off); transition: background .15s; }
+  .title-dot.on { background: var(--dot-on); }
 
   h1 {
-    font-size: 32px;
-    font-weight: 700;
+    font-size: 28px;
+    font-weight: 800;
     letter-spacing: -0.02em;
-    line-height: 1.15;
+    line-height: 1.2;
     text-align: center;
+    color: var(--ink);
   }
+  h1 span { color: var(--red); }
 
-  h1 span {
-    color: var(--accent);
-  }
-
-  .subtitle {
-    font-size: 15px;
-    color: var(--ink2);
-    text-align: center;
-    line-height: 1.6;
-  }
+  .subtitle { font-size: 14px; color: var(--ink2); text-align: center; line-height: 1.6; }
 
   /* ── BUTTONS ── */
   .btn {
@@ -104,372 +98,230 @@
     width: 100%;
     padding: 16px;
     border: none;
-    border-radius: var(--radius);
+    border-radius: 999px;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
-    transition: transform 0.1s, opacity 0.1s;
+    transition: transform .08s, box-shadow .08s, opacity .1s;
     letter-spacing: 0.01em;
+    box-shadow: var(--shadow-pop);
   }
+  .btn:active { transform: translateY(4px); box-shadow: none; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
 
-  .btn:active { transform: scale(0.97); opacity: 0.85; }
-
-  .btn-primary { background: var(--ink); color: #fff; }
-  .btn-secondary { background: var(--card); color: var(--ink); border: 1.5px solid #d8d5ce; }
-  .btn-accent { background: var(--accent); color: #fff; }
-  .btn-hit { background: var(--hit); color: #fff; font-size: 20px; padding: 24px; border-radius: 20px; }
-  .btn-sm { padding: 10px 16px; font-size: 14px; border-radius: 10px; width: auto; }
-
+  .btn-primary { background: var(--purple); color: #fff; }
+  .btn-secondary { background: var(--card); color: var(--ink); border: 2px solid #ddd2f7; box-shadow: 0 6px 0 #ddd2f7; }
+  .btn-accent { background: var(--blue); color: #fff; }
+  .btn-hit { background: var(--green); color: #fff; }
+  .btn-sm { padding: 10px 14px; font-size: 13px; box-shadow: 0 4px 0 rgba(0,0,0,0.18); width: auto; }
   .btn-stack { display: flex; flex-direction: column; gap: 10px; }
 
+  .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 4px 0 18px; }
+  .mode-btn {
+    border: none; border-radius: 14px; padding: 16px 8px; color: #fff; font-weight: 700; font-size: 14px;
+    cursor: pointer; box-shadow: 0 5px 0 rgba(0,0,0,0.2); transition: transform .08s, box-shadow .08s;
+  }
+  .mode-btn:active { transform: translateY(3px); box-shadow: none; }
+  .mode-btn.full { grid-column: 1 / -1; }
+  .mode-btn.c-purple { background: var(--purple); }
+  .mode-btn.c-red { background: var(--red); }
+  .mode-btn.c-yellow { background: var(--yellow); }
+  .mode-btn.c-blue { background: var(--blue); }
+  .mode-btn.c-green { background: var(--green); }
+
   /* ── INPUT ── */
-  .field { display: flex; flex-direction: column; gap: 8px; }
-  label { font-size: 13px; font-weight: 500; color: var(--ink2); }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 12px; font-weight: 700; color: var(--ink2); }
 
   input[type="text"] {
     padding: 14px 16px;
     font-size: 18px;
     font-family: inherit;
-    border: 1.5px solid #d8d5ce;
+    border: 2px solid #ddd2f7;
     border-radius: var(--radius);
     background: var(--card);
     color: var(--ink);
     outline: none;
-    letter-spacing: 0.1em;
-    transition: border-color 0.15s;
+    letter-spacing: 0.06em;
+    transition: border-color .15s;
   }
+  input:focus { border-color: var(--purple); }
+  input::placeholder { color: var(--ink3); letter-spacing: 0; font-size: 14px; }
 
-  input:focus { border-color: var(--accent); }
-  input::placeholder { color: var(--ink3); letter-spacing: 0; font-size: 15px; }
+  /* ── ROOM CODE / PLAYER LIST ── */
+  .room-code-display { background: var(--accent-light); border: 2px solid var(--blue); border-radius: var(--radius); padding: 18px; text-align: center; }
+  .room-code-label { font-size: 11px; letter-spacing: 0.12em; color: var(--blue); font-weight: 700; text-transform: uppercase; margin-bottom: 6px; }
+  .room-code-num { font-size: 36px; font-weight: 800; letter-spacing: 0.18em; color: var(--ink); }
 
-  /* ── ROOM CODE DISPLAY ── */
-  .room-code-display {
-    background: var(--accent-light);
-    border: 1.5px solid var(--accent);
-    border-radius: var(--radius);
-    padding: 20px;
-    text-align: center;
+  .player-list { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; }
+  .player-item { display: flex; align-items: center; gap: 10px; background: var(--card); border-radius: 12px; padding: 11px 14px; font-size: 14px; border: 1px solid #eae3fb; }
+  .player-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--hit); flex-shrink: 0; }
+  .player-name { font-weight: 600; }
+  .player-host-badge { font-size: 10px; background: var(--accent-light); color: var(--blue); padding: 2px 6px; border-radius: 6px; font-weight: 700; }
+  .player-score { margin-left: auto; font-weight: 800; color: var(--purple); font-size: 14px; }
+
+  /* ── GAME HEADER / TIMER ── */
+  .game-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 10px; }
+  .round-badge { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: var(--ink2); }
+  .my-score-label { font-size: 13px; font-weight: 800; color: var(--purple); }
+
+  .timer-bar-wrap { position: relative; overflow: visible; margin-bottom: 26px; padding-top: 10px; }
+  .timer-bar { height: 12px; background: #e4ddf7; border-radius: 8px; overflow: hidden; }
+  .timer-fill { height: 100%; background: linear-gradient(90deg, var(--green), var(--blue)); border-radius: 8px; transition: width .1s linear, background .3s; }
+  .timer-markers { position: absolute; inset: 0 0 auto 0; top: 0; height: 100%; pointer-events: none; }
+  .timer-marker {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--ink); color: #fff; font-size: 10px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    animation: pop .3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
+  .timer-marker.correct { background: var(--hit); }
+  .timer-marker.wrong { background: var(--miss); }
 
-  .room-code-label { font-size: 12px; letter-spacing: 0.12em; color: var(--accent); text-transform: uppercase; margin-bottom: 8px; }
-  .room-code-num { font-size: 40px; font-weight: 700; letter-spacing: 0.2em; color: var(--ink); }
-
-  /* ── PLAYER LIST ── */
-  .player-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin: 16px 0;
-  }
-
-  .player-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--card);
-    border-radius: 10px;
-    padding: 12px 14px;
-    font-size: 15px;
-    border: 1px solid #eae8e2;
-  }
-
-  .player-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--hit);
-    flex-shrink: 0;
-  }
-
-  .player-score {
-    margin-left: auto;
-    font-weight: 600;
-    color: var(--accent);
-    font-size: 14px;
-  }
-
-  /* ── GAME SCREEN ── */
-  .game-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-  }
-
-  .round-badge {
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    color: var(--ink3);
-    text-transform: uppercase;
-  }
-
-  .timer-bar {
-    height: 3px;
-    background: #e0ddd6;
-    border-radius: 2px;
-    margin-bottom: 28px;
-    overflow: hidden;
-  }
-
-  .timer-fill {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 2px;
-    transition: width 0.1s linear, background 0.3s;
-  }
-
-  /* ── BIG BRAILLE DISPLAY ── */
-  .braille-display {
-    display: flex;
-    justify-content: center;
-    gap: 18px;
-    padding: 32px 0;
-    flex-wrap: wrap;
-  }
-
+  /* ── BRAILLE CELLS (shared: decorative-ish but functional tap/display) ── */
+  :root { --dot-size: 30px; --cell-gap: 6px; --within-gap: 3px; --cell-pad: 4px; --dot-gap: 3px; }
+  .word-display { font-size: clamp(22px, 6.5vw, 34px); font-weight: 800; letter-spacing: 0.06em; margin-bottom: 10px; color: var(--ink); text-align: center; overflow-wrap: anywhere; }
+  .word-display .active-char { color: var(--red); }
+  .cells-row, .answer-row { display: flex; flex-wrap: nowrap; justify-content: center; gap: var(--cell-gap); overflow: hidden; }
+  .cells-row { margin-bottom: 10px; }
+  .cell-group { display: flex; gap: var(--within-gap); flex-shrink: 0; }
   .braille-cell {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    background: var(--card);
-    border-radius: 16px;
-    padding: 14px;
-    border: 1.5px solid #e0ddd6;
-  }
-
-  .braille-cell .dot {
-    width: 16px;
-    height: 16px;
-  }
-
-  .hint-text {
-    text-align: center;
-    font-size: 13px;
-    color: var(--ink3);
-    margin-bottom: 24px;
-  }
-
-  /* ── ANSWER AREA ── */
-  .answer-section {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    gap: 12px;
-  }
-
-  .buzz-area {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .buzz-btn {
-    width: 140px;
-    height: 140px;
-    border-radius: 50%;
-    border: none;
-    background: var(--ink);
-    color: #fff;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    transition: transform 0.1s, background 0.2s;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    letter-spacing: 0.02em;
-  }
-
-  .buzz-btn .buzz-icon { font-size: 36px; line-height: 1; }
-  .buzz-btn:active { transform: scale(0.93); }
-  .buzz-btn.hit { background: var(--hit); }
-  .buzz-btn.miss { background: var(--miss); }
-  .buzz-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-
-  /* ── ANSWER GRID (choices) ── */
-  .answer-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-
-  .choice-btn {
-    padding: 16px 8px;
-    border: 1.5px solid #d8d5ce;
+    grid-template-columns: repeat(2, var(--dot-size));
+    grid-template-rows: repeat(3, var(--dot-size));
+    gap: var(--dot-gap);
+    padding: var(--cell-pad);
     border-radius: 12px;
     background: var(--card);
-    font-size: 18px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.12s;
-    color: var(--ink);
+    border: 2px solid #e4ddf7;
+    flex-shrink: 0;
+    transition: background .2s, box-shadow .2s, border-color .2s;
   }
-
-  .choice-btn:active { transform: scale(0.96); background: var(--accent-light); border-color: var(--accent); }
-  .choice-btn.correct { background: var(--hit-light); border-color: var(--hit); color: var(--hit); }
-  .choice-btn.wrong { background: #fce8e8; border-color: var(--miss); color: var(--miss); }
-  .choice-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  /* ── RESULT FEEDBACK ── */
-  .feedback-overlay {
-    position: fixed;
-    inset: 0;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-    z-index: 100;
+  .braille-cell.correct { background: var(--hit-light); border-color: var(--hit); }
+  .braille-cell.wrong { background: var(--miss-light); border-color: var(--miss); }
+  .dot {
+    width: var(--dot-size); height: var(--dot-size);
+    border-radius: 50%; border: 2px solid #d8cdf2; background: #fff;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #b3a4dd; padding: 0;
+    touch-action: manipulation; user-select: none; outline: none;
   }
+  .dot.on { background: var(--dot-on); border-color: var(--dot-on); color: transparent; }
+  .dot.missing { border: 2px dashed var(--blue); background: var(--accent-light); color: var(--blue); }
+  .dot.extra { background: var(--miss); border-color: var(--miss); color: transparent; }
+  .braille-cell.locked-cell .dot { cursor: default; opacity: .9; }
+  .answer-row .dot { cursor: default; }
 
+  #answerWrap { min-height: 24px; display: flex; flex-direction: column; justify-content: flex-start; }
+  .answer-label { font-size: 12px; color: var(--purple); margin-bottom: 4px; font-weight: 700; }
+  .answer-text { font-size: 20px; font-weight: 800; color: var(--ink); }
+  .dot-legend { font-size: 12px; color: var(--ink2); line-height: 1.4; text-align: center; }
+  .dot-legend .legend-missing { color: var(--blue); font-weight: 700; }
+  .dot-legend .legend-extra { color: var(--red); font-weight: 700; }
+
+  .answer-input-wrap { margin: 4px 0 14px; display: flex; justify-content: center; }
+  .answer-input-wrap input { width: 100%; max-width: 220px; text-align: center; }
+
+  .controls { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 6px 0 3px; }
+  #checkBtn, #mpCheckBtn { min-width: 110px; }
+
+  .feedback { min-height: 22px; font-size: 14px; font-weight: 700; margin-top: 4px; text-align: center; }
+  .feedback.correct { color: var(--hit); }
+  .feedback.wrong { color: var(--miss); }
+
+  .hidden { display: none !important; }
+
+  /* ── HINT / WAITING ── */
+  .hint-text { text-align: center; font-size: 12px; color: var(--ink3); margin-bottom: 10px; }
+  .status-card { background: var(--card); border: 1px solid #eae3fb; border-radius: var(--radius); padding: 20px; text-align: center; }
+  .status-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .status-sub { font-size: 13px; color: var(--ink3); }
+  .waiting-dots { display: inline-flex; gap: 5px; margin-top: 12px; }
+  .waiting-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--purple); animation: blink 1.2s ease-in-out infinite; }
+  .waiting-dots span:nth-child(2) { animation-delay: .2s; }
+  .waiting-dots span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+
+  /* ── SCORES / PODIUM ── */
+  .score-row { display: flex; align-items: center; padding: 12px 16px; background: var(--card); border-radius: 12px; border: 1px solid #eae3fb; gap: 12px; transition: transform .3s; }
+  .score-rank { font-size: 18px; font-weight: 800; width: 30px; color: var(--ink3); }
+  .score-rank.first { color: #c4860a; }
+  .score-rank.second { color: #6a6a66; }
+  .score-name { font-size: 15px; flex: 1; font-weight: 600; }
+  .score-pts { font-size: 18px; font-weight: 800; color: var(--purple); }
+  .score-pts span { font-size: 12px; font-weight: 400; color: var(--ink3); }
+  .score-delta { font-size: 13px; font-weight: 800; margin-left: 6px; }
+  .score-delta.gain { color: var(--hit); }
+  .score-delta.zero { color: var(--ink3); }
+
+  .section-head { font-size: 12px; font-weight: 700; color: var(--ink3); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; margin-top: 16px; }
+  .divider { height: 1px; background: #e4ddf7; margin: 16px 0; }
+
+  .answer-reveal { background: var(--card); border-radius: var(--radius); padding: 18px; text-align: center; border: 2px solid #e4ddf7; }
+  .answer-label2 { font-size: 12px; color: var(--ink3); margin-bottom: 4px; }
+  .answer-value { font-size: 24px; font-weight: 800; }
+
+  .winner-announce { background: var(--hit-light); border: 2px solid var(--hit); border-radius: var(--radius); padding: 14px; text-align: center; }
+  .winner-announce .winner-label { font-size: 11px; color: var(--hit); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; font-weight: 700; }
+  .winner-announce .winner-name { font-size: 19px; font-weight: 800; color: var(--hit); }
+
+  .feedback-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; pointer-events: none; z-index: 100; }
   .feedback-overlay.show { display: flex; }
-
-  .feedback-pill {
-    font-size: 22px;
-    font-weight: 700;
-    padding: 16px 32px;
-    border-radius: 50px;
-    animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-
+  .feedback-pill { font-size: 20px; font-weight: 800; padding: 14px 30px; border-radius: 50px; animation: pop .4s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
   .feedback-pill.correct { background: var(--hit); color: #fff; }
   .feedback-pill.wrong { background: var(--miss); color: #fff; }
   .feedback-pill.info { background: var(--ink); color: #fff; }
+  @keyframes pop { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-  @keyframes pop {
-    from { transform: scale(0.5); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+  .confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 90; }
+  .confetti span {
+    position: absolute; top: -10px; width: 8px; height: 14px; opacity: .9;
+    animation: fall 2.6s ease-in forwards;
   }
+  @keyframes fall { to { transform: translateY(110vh) rotate(360deg); opacity: 0; } }
 
-  /* ── WAITING / STATUS ── */
-  .status-card {
-    background: var(--card);
-    border: 1px solid #eae8e2;
-    border-radius: var(--radius);
-    padding: 20px;
-    text-align: center;
-  }
-
-  .status-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
-  .status-sub { font-size: 13px; color: var(--ink3); }
-
-  .waiting-dots {
-    display: inline-flex;
-    gap: 5px;
-    margin-top: 12px;
-  }
-
-  .waiting-dots span {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--ink3);
-    animation: blink 1.2s ease-in-out infinite;
-  }
-
-  .waiting-dots span:nth-child(2) { animation-delay: 0.2s; }
-  .waiting-dots span:nth-child(3) { animation-delay: 0.4s; }
-
-  @keyframes blink {
-    0%, 100% { opacity: 0.3; }
-    50% { opacity: 1; }
-  }
-
-  /* ── SCORES ── */
-  .score-row {
-    display: flex;
-    align-items: center;
-    padding: 12px 16px;
-    background: var(--card);
-    border-radius: 12px;
-    border: 1px solid #eae8e2;
-    gap: 12px;
-  }
-
-  .score-rank { font-size: 20px; font-weight: 700; width: 32px; color: var(--ink3); }
-  .score-rank.first { color: #c4860a; }
-  .score-rank.second { color: #6a6a66; }
-  .score-name { font-size: 16px; flex: 1; }
-  .score-pts { font-size: 20px; font-weight: 700; color: var(--accent); }
-  .score-pts span { font-size: 13px; font-weight: 400; color: var(--ink3); }
-
-  /* ── SECTION HEADINGS ── */
-  .section-head {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--ink3);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-    margin-top: 20px;
-  }
-
-  .divider { height: 1px; background: #e8e5de; margin: 20px 0; }
-
-  /* ── ANSWER REVEAL ── */
-  .answer-reveal {
-    background: var(--card);
-    border-radius: var(--radius);
-    padding: 20px;
-    text-align: center;
-    border: 1.5px solid #e0ddd6;
-  }
-
-  .answer-label { font-size: 13px; color: var(--ink3); margin-bottom: 6px; }
-  .answer-value { font-size: 28px; font-weight: 700; }
-
-  .winner-announce {
-    background: var(--hit-light);
-    border: 1.5px solid var(--hit);
-    border-radius: var(--radius);
-    padding: 16px;
-    text-align: center;
-  }
-
-  .winner-announce .winner-label { font-size: 12px; color: var(--hit); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
-  .winner-announce .winner-name { font-size: 22px; font-weight: 700; color: var(--hit); }
-
-  /* ── FIREBASE CONFIG NOTICE ── */
-  .config-notice {
-    background: #fffbeb;
-    border: 1.5px solid #f59e0b;
-    border-radius: var(--radius);
-    padding: 16px;
-    font-size: 13px;
-    line-height: 1.6;
-    color: #78350f;
-    display: none;
-  }
-
+  .config-notice { background: #fffbeb; border: 2px solid #f59e0b; border-radius: var(--radius); padding: 14px; font-size: 12px; line-height: 1.6; color: #78350f; display: none; }
   .config-notice.show { display: block; }
-  .config-notice strong { display: block; margin-bottom: 4px; font-size: 14px; }
-  .config-notice code {
-    background: #fef3c7;
-    padding: 1px 5px;
-    border-radius: 4px;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-  }
+  .config-notice strong { display: block; margin-bottom: 4px; font-size: 13px; }
+  .config-notice code { background: #fef3c7; padding: 1px 5px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 11px; }
 
-  /* ── ROLE BADGE ── */
-  .role-badge {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
-    background: var(--accent-light);
-    color: var(--accent);
-    margin-left: 8px;
-    vertical-align: middle;
-  }
+  .role-badge { display: inline-block; padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 700; background: var(--accent-light); color: var(--blue); margin-left: 6px; vertical-align: middle; }
+
+  .mini-cell-group { display: flex; gap: 2px; }
+  .mini-cell { display: grid; grid-template-columns: repeat(2, 11px); grid-template-rows: repeat(3, 11px); gap: 1.5px; padding: 3px; border-radius: 5px; background: #efe9fb; }
+  .mini-cell.correct { background: var(--hit-light); }
+  .mini-cell.wrong { background: var(--miss-light); }
+  .mini-dot { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid #d8cdf2; background: #fff; }
+  .mini-dot.on { background: var(--dot-on); border-color: var(--dot-on); }
+
+  .review-list { margin-top: 16px; text-align: left; }
+  .review-item { padding: 10px; border-radius: 12px; margin-bottom: 8px; background: var(--card); border: 1px solid #eae3fb; }
+  .review-item.correct { background: var(--hit-light); border-color: var(--hit); }
+  .review-item.wrong { background: var(--miss-light); border-color: var(--miss); }
+  .review-item-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .review-q-num { font-size: 11px; color: var(--ink3); font-weight: 700; flex-shrink: 0; }
+  .review-word { flex: 1; font-size: 16px; font-weight: 800; color: var(--ink); overflow-wrap: anywhere; }
+  .review-result-icon { font-size: 15px; font-weight: 800; flex-shrink: 0; }
+  .review-item.correct .review-result-icon { color: var(--hit); }
+  .review-item.wrong .review-result-icon { color: var(--miss); }
+  .review-chars { display: flex; flex-wrap: wrap; gap: 8px; }
+  .review-char { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border-radius: 8px; background: #fff; }
+  .review-char.correct { box-shadow: 0 0 0 1px #bbf7d0; }
+  .review-char.wrong { box-shadow: 0 0 0 1px #fecaca; }
+  .review-char-label { font-size: 12px; font-weight: 700; color: var(--ink); }
+  .review-compare { display: flex; gap: 10px; }
+  .review-compare-col { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .review-compare-label { font-size: 9px; color: var(--ink3); }
+  .review-text-compare { font-size: 12px; color: var(--ink2); line-height: 1.6; }
 
   .spacer { flex: 1; }
+
+  @media (max-width: 420px) {
+    .screen { padding: 14px 10px; }
+    .screen-card { padding: 16px 12px; }
+  }
 </style>
 </head>
 <body>
@@ -478,27 +330,68 @@
      SCREEN: TOP
 ═════════════════════════════════ -->
 <div id="screen-top" class="screen active">
+  <div class="screen-card">
   <div class="logo">点字クイズ</div>
 
   <div class="title-hero">
-    <!-- Decorative braille dots -->
-    <div class="braille-title" id="title-braille"></div>
-
-    <h1>早押し<span>点字</span>クイズ</h1>
-    <p class="subtitle">点字を読んで、一番早く答えを<br>押したプレイヤーが勝ち！</p>
+    <div class="title-braille" id="title-braille"></div>
+    <h1>点字<span>オンライン</span>クイズ</h1>
+    <p class="subtitle">点字を読んで、ひとりで練習。<br>みんなで対戦して、はやく正解した人ほど高得点！</p>
   </div>
 
   <div id="firebase-notice" class="config-notice">
     <strong>⚙ Firebase の設定が必要です</strong>
     このアプリはFirebase Realtime Databaseを使います。<br>
-    下の「Firebaseの設定方法」を確認してから<code>firebaseConfig</code>を書き換えてください。
+    下の<code>firebaseConfig</code>を確認してください。
+  </div>
+
+  <div class="section-head">ひとりで練習</div>
+  <div class="mode-grid">
+    <button class="mode-btn c-purple" data-solo-mode="training">点字訓練</button>
+    <button class="mode-btn c-red" data-solo-mode="word">単語</button>
+    <button class="mode-btn c-yellow" data-solo-mode="sentence">文章</button>
+    <button class="mode-btn c-blue" data-solo-mode="number">数字</button>
+    <button class="mode-btn c-green full" data-solo-mode="reading">読みモード</button>
   </div>
 
   <div class="divider"></div>
 
+  <div class="section-head">みんなで対戦</div>
   <div class="btn-stack">
-    <button class="btn btn-primary" onclick="showCreateRoom()">ルームを作る（ホスト）</button>
-    <button class="btn btn-secondary" onclick="showJoinRoom()">ルームに参加する</button>
+    <button class="btn btn-primary" onclick="showScreen('screen-create')">ルームを作る（ホスト）</button>
+    <button class="btn btn-secondary" onclick="showScreen('screen-join')">ルームに参加する</button>
+  </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     SCREEN: SOLO QUIZ
+═════════════════════════════════ -->
+<div id="screen-solo-quiz" class="screen">
+  <div class="screen-card">
+    <div class="game-header">
+      <button class="btn btn-secondary btn-sm" onclick="goHome()">ホームへ</button>
+      <span style="font-size:13px;color:var(--ink2)">問題 <strong id="questionNum">1</strong> / <span id="questionTotal">10</span> ・ 正解 <strong id="correctCount">0</strong></span>
+    </div>
+
+    <div id="soloAnswerMount"></div>
+
+    <div class="feedback" id="soloFeedback"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     SCREEN: SOLO RESULTS
+═════════════════════════════════ -->
+<div id="screen-solo-results" class="screen">
+  <div class="screen-card">
+    <div class="logo">結果</div>
+    <p class="answer-value" id="soloResultsScore" style="text-align:center;margin-bottom:6px">10問中 0問正解</p>
+    <div class="btn-stack" style="margin-top:10px">
+      <button class="btn btn-primary" onclick="retrySoloQuiz()">もう一度</button>
+      <button class="btn btn-secondary" onclick="goHome()">ホームへ</button>
+    </div>
+    <div class="review-list" id="soloReviewList"></div>
   </div>
 </div>
 
@@ -506,6 +399,7 @@
      SCREEN: CREATE ROOM
 ═════════════════════════════════ -->
 <div id="screen-create" class="screen">
+  <div class="screen-card">
   <div class="logo">ルーム作成</div>
 
   <div class="field">
@@ -513,11 +407,24 @@
     <input type="text" id="host-name" placeholder="例: さくら" maxlength="10">
   </div>
 
-  <div class="section-head" style="margin-top:24px">問題数</div>
-  <div style="display:flex; gap:8px">
-    <button class="btn btn-secondary btn-sm" id="q5" onclick="setQCount(5)" style="flex:1">5問</button>
-    <button class="btn btn-primary btn-sm" id="q10" onclick="setQCount(10)" style="flex:1">10問</button>
-    <button class="btn btn-secondary btn-sm" id="q15" onclick="setQCount(15)" style="flex:1">15問</button>
+  <div class="section-head">お題モード</div>
+  <div style="display:flex; gap:8px" id="create-mode-buttons">
+    <button class="btn btn-primary btn-sm" data-online-mode="word" style="flex:1">単語</button>
+    <button class="btn btn-secondary btn-sm" data-online-mode="sentence" style="flex:1">文章</button>
+    <button class="btn btn-secondary btn-sm" data-online-mode="number" style="flex:1">数字</button>
+    <button class="btn btn-secondary btn-sm" data-online-mode="reading" style="flex:1">読み</button>
+  </div>
+
+  <div class="section-head">問題数</div>
+  <div style="display:flex; gap:8px" id="create-qcount-buttons">
+    <button class="btn btn-secondary btn-sm" data-qcount="5" style="flex:1">5問</button>
+    <button class="btn btn-primary btn-sm" data-qcount="10" style="flex:1">10問</button>
+    <button class="btn btn-secondary btn-sm" data-qcount="15" style="flex:1">15問</button>
+  </div>
+
+  <div class="field" style="margin-top:16px">
+    <label>パスワード（任意）</label>
+    <input type="text" id="create-password" placeholder="例: tenji123" maxlength="20">
   </div>
 
   <div class="spacer"></div>
@@ -526,12 +433,14 @@
     <button class="btn btn-accent" onclick="createRoom()">ルームを作成する</button>
     <button class="btn btn-secondary" onclick="showScreen('screen-top')">もどる</button>
   </div>
+  </div>
 </div>
 
 <!-- ════════════════════════════════
      SCREEN: JOIN ROOM
 ═════════════════════════════════ -->
 <div id="screen-join" class="screen">
+  <div class="screen-card">
   <div class="logo">参加</div>
 
   <div class="field">
@@ -539,11 +448,16 @@
     <input type="text" id="player-name" placeholder="例: たろう" maxlength="10">
   </div>
 
-  <div class="field" style="margin-top:16px">
+  <div class="field" style="margin-top:14px">
     <label>ルームコード（6桁）</label>
     <input type="text" id="room-code-input" placeholder="000000" maxlength="6"
            inputmode="numeric" pattern="[0-9]*"
            oninput="this.value=this.value.replace(/\D/g,'')">
+  </div>
+
+  <div class="field" style="margin-top:14px">
+    <label>パスワード（設定されている場合）</label>
+    <input type="text" id="join-password" placeholder="パスワード" maxlength="20">
   </div>
 
   <div class="spacer"></div>
@@ -552,12 +466,14 @@
     <button class="btn btn-accent" onclick="joinRoom()">参加する</button>
     <button class="btn btn-secondary" onclick="showScreen('screen-top')">もどる</button>
   </div>
+  </div>
 </div>
 
 <!-- ════════════════════════════════
      SCREEN: LOBBY (HOST)
 ═════════════════════════════════ -->
 <div id="screen-lobby-host" class="screen">
+  <div class="screen-card">
   <div class="logo">ロビー <span class="role-badge">ホスト</span></div>
 
   <div class="room-code-display">
@@ -565,7 +481,7 @@
     <div class="room-code-num" id="display-room-code">——</div>
   </div>
 
-  <p style="font-size:13px; color:var(--ink3); text-align:center; margin-top:8px">このコードを参加者に伝えてください</p>
+  <p style="font-size:12px; color:var(--ink3); text-align:center; margin-top:8px">このコードとパスワードを参加者に伝えてください</p>
 
   <div class="section-head">参加者</div>
   <div id="host-player-list" class="player-list"></div>
@@ -575,12 +491,14 @@
   <div class="btn-stack">
     <button class="btn btn-accent" id="start-btn" onclick="startGame()">ゲームスタート</button>
   </div>
+  </div>
 </div>
 
 <!-- ════════════════════════════════
      SCREEN: LOBBY (PLAYER)
 ═════════════════════════════════ -->
 <div id="screen-lobby-player" class="screen">
+  <div class="screen-card">
   <div class="logo">ロビー</div>
 
   <div class="status-card">
@@ -591,27 +509,33 @@
 
   <div class="section-head">参加者</div>
   <div id="player-player-list" class="player-list"></div>
+  </div>
 </div>
 
 <!-- ════════════════════════════════
-     SCREEN: GAME
+     SCREEN: GAME (ONLINE)
 ═════════════════════════════════ -->
 <div id="screen-game" class="screen">
-  <div class="game-header">
-    <span class="round-badge" id="round-label">問題 1 / 10</span>
-    <span style="font-size:13px; color:var(--ink3)" id="my-score-label">0点</span>
-  </div>
+  <div class="screen-card">
+    <div class="game-header">
+      <span class="round-badge" id="round-label">問題 1 / 10</span>
+      <span class="my-score-label" id="my-score-label">0点</span>
+    </div>
 
-  <div class="timer-bar"><div class="timer-fill" id="timer-fill"></div></div>
+    <div class="timer-bar-wrap">
+      <div class="timer-bar"><div class="timer-fill" id="timer-fill"></div></div>
+      <div class="timer-markers" id="timer-markers"></div>
+    </div>
 
-  <!-- Braille display -->
-  <div class="braille-display" id="game-braille"></div>
+    <div id="mpAnswerMount"></div>
 
-  <div class="hint-text" id="hint-text">点字を読んで早押し！</div>
+    <div class="feedback" id="mpFeedback"></div>
 
-  <!-- Answer choices -->
-  <div class="answer-section">
-    <div class="answer-grid" id="choice-grid"></div>
+    <div id="mp-waiting" class="status-card hidden" style="margin-top:10px">
+      <div class="status-title" id="mp-waiting-title">回答を送信しました</div>
+      <div class="status-sub">他のプレイヤーの回答を待っています</div>
+      <div class="waiting-dots"><span></span><span></span><span></span></div>
+    </div>
   </div>
 </div>
 
@@ -619,20 +543,19 @@
      SCREEN: ROUND RESULT
 ═════════════════════════════════ -->
 <div id="screen-round-result" class="screen">
-  <div class="logo">結果</div>
+  <div class="screen-card">
+  <div class="logo">結果発表</div>
 
-  <div class="answer-reveal" style="margin-bottom:16px">
-    <div class="answer-label">正解</div>
+  <div class="answer-reveal" style="margin-bottom:14px">
+    <div class="answer-label2">正解</div>
     <div class="answer-value" id="result-answer">——</div>
   </div>
 
-  <div id="winner-box" class="winner-announce" style="margin-bottom:16px">
-    <div class="winner-label">最速で正解！</div>
-    <div class="winner-name" id="winner-name">——</div>
-  </div>
-
-  <div class="section-head">スコア</div>
+  <div class="section-head">今回のスコア</div>
   <div id="round-score-list" style="display:flex; flex-direction:column; gap:8px"></div>
+
+  <div class="section-head">総合順位</div>
+  <div id="round-total-list" style="display:flex; flex-direction:column; gap:8px"></div>
 
   <div class="spacer"></div>
 
@@ -643,18 +566,20 @@
     <div class="status-sub">ホストが次の問題を出すのを待っています</div>
     <div class="waiting-dots"><span></span><span></span><span></span></div>
   </div>
+  </div>
 </div>
 
 <!-- ════════════════════════════════
      SCREEN: FINAL
 ═════════════════════════════════ -->
 <div id="screen-final" class="screen">
+  <div class="screen-card">
   <div class="logo">最終結果</div>
 
-  <div style="text-align:center; padding: 24px 0 16px">
-    <div style="font-size:48px; margin-bottom:8px">🏆</div>
-    <div style="font-size:22px; font-weight:700" id="final-winner-name">——</div>
-    <div style="font-size:14px; color:var(--ink3); margin-top:4px">優勝！</div>
+  <div style="text-align:center; padding: 20px 0 14px">
+    <div style="font-size:46px; margin-bottom:8px">🏆</div>
+    <div style="font-size:21px; font-weight:800" id="final-winner-name">——</div>
+    <div style="font-size:13px; color:var(--ink3); margin-top:4px">優勝！</div>
   </div>
 
   <div class="section-head">最終スコア</div>
@@ -662,7 +587,8 @@
 
   <div class="spacer"></div>
 
-  <button class="btn btn-secondary" onclick="showScreen('screen-top'); location.reload()">タイトルにもどる</button>
+  <button class="btn btn-secondary" onclick="location.reload()">タイトルにもどる</button>
+  </div>
 </div>
 
 <!-- ════════════════════════════════
@@ -671,33 +597,22 @@
 <div class="feedback-overlay" id="feedback-overlay">
   <div class="feedback-pill" id="feedback-pill"></div>
 </div>
-
+<div class="confetti hidden" id="confetti"></div>
 
 <!-- ════════════════════════════════════════════════════
-     FIREBASE SDK
-     ↓ Replace the firebaseConfig below with yours!
+     APP SCRIPT (placeholder — filled in next steps)
 ════════════════════════════════════════════════════ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getDatabase, ref, set, get, push, onValue, off, update, serverTimestamp, remove }
+import { getDatabase, ref, set, get, onValue, off, update, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //  ★ ここにあなたの Firebase 設定を貼り付けてください
 //    Firebase Console → プロジェクト設定 → マイアプリ → SDK の設定と構成
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// const firebaseConfig = {
-//   apiKey: "YOUR_API_KEY",
-//   authDomain: "YOUR_PROJECT.firebaseapp.com",
-//   databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-//   projectId: "YOUR_PROJECT",
-//   storageBucket: "YOUR_PROJECT.appspot.com",
-//   messagingSenderId: "YOUR_SENDER_ID",
-//   appId: "YOUR_APP_ID"
-// };
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyDfHzrDKQwtHULlDHEe_reY0h_gR4tEwGI",
   authDomain: "tenji-game.firebaseapp.com",
@@ -710,10 +625,10 @@ const firebaseConfig = {
 };
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-// ─── Check if config is placeholder ───
 const isConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
 
 let app, db, auth;
+let myId = null;
 let authReady = Promise.resolve(null);
 
 if (isConfigured) {
@@ -722,13 +637,10 @@ if (isConfigured) {
   auth = getAuth(app);
 
   // ルーム/プレイヤーごとのIDをFirebase Authの匿名UIDにする。
-  // これでセキュリティルール側で「自分のデータだけ書き込める」を強制できる。
+  // セキュリティルール側で「自分のデータだけ書き込める」を強制するための鍵になる。
   authReady = new Promise(resolve => {
     onAuthStateChanged(auth, user => {
-      if (user) {
-        myId = user.uid;
-        resolve(myId);
-      }
+      if (user) { myId = user.uid; resolve(myId); }
     });
     signInAnonymously(auth).catch(err => {
       console.error('匿名ログインに失敗しました', err);
@@ -739,556 +651,1190 @@ if (isConfigured) {
   document.getElementById("firebase-notice").classList.add("show");
 }
 
-// ════════════════════════════════
-//  BRAILLE DATA
-// ════════════════════════════════
-// Braille cell: 6 dots [1,2,3,4,5,6] — top-left column = 1,2,3; top-right = 4,5,6
-const BRAILLE = {
-  'あ': [1],
-  'い': [1,2],
-  'う': [1,2,4,5],
-  'え': [1,4,5],
-  'お': [1,4],
-  'か': [1,3],
-  'き': [1,2,3],
-  'く': [1,2,3,4,5],
-  'け': [1,3,4,5],
-  'こ': [1,3,4],
-  'さ': [1,3,6],
-  'し': [1,2,3,6],
-  'す': [1,2,3,4,5,6],
-  'せ': [1,3,4,5,6],
-  'そ': [1,3,4,6],
-  'た': [1,5,6],
-  'ち': [1,2,5,6],
-  'つ': [1,4,5,6],
-  'て': [1,4,6],
-  'と': [1,6],
-  'な': [1,3,5,6],
-  'に': [1,2,3,5,6],
-  'ぬ': [1,2,3,4,5,6],
-  'ね': [1,3,4,5,6],
-  'の': [1,3,5],
-  'は': [1,2,5],
-  'ひ': [1,2,4],
-  'ふ': [1,2,4,6],
-  'へ': [1,4,6],
-  'ほ': [1,2,6],
-  'ま': [2,3,4,5,6],
-  'み': [2,3,4,5],
-  'む': [2,3,4,6],
-  'め': [2,3,4],
-  'も': [2,3,6],
-  'や': [1,3,4,5,6],
-  'ゆ': [1,2,3,4,5,6],
-  'よ': [1,4,5,6],
-  'ら': [1,2,3,4],
-  'り': [1,2,3,4,6],
-  'る': [1,2,3,4,5,6],
-  'れ': [1,2,3,4,5],
-  'ろ': [1,2,3,5],
-  'わ': [1,2,4,5,6],
-  'を': [1,2,4,6],
-  'ん': [2,3,4,5,6],
-};
+// サーバー時刻とのズレを補正するためのオフセット（RTDB標準パス）。
+// タイマーバーのカウントダウンとスコア計算の両方で使う。
+let serverTimeOffsetMs = 0;
+if (isConfigured) {
+  onValue(ref(db, '.info/serverTimeOffset'), snap => {
+    serverTimeOffsetMs = snap.val() || 0;
+  });
+}
+function estimatedServerNow() { return Date.now() + serverTimeOffsetMs; }
 
-// Quiz questions: {question (kana), answer (display), choices}
-const ALL_QUESTIONS = [
-  { q: 'あ', a: 'あ', hint: '五十音 ア行', choices: ['あ','い','う','え'] },
-  { q: 'か', a: 'か', hint: '五十音 カ行', choices: ['か','き','く','こ'] },
-  { q: 'さ', a: 'さ', hint: '五十音 サ行', choices: ['さ','し','す','せ'] },
-  { q: 'た', a: 'た', hint: '五十音 タ行', choices: ['た','ち','つ','て'] },
-  { q: 'な', a: 'な', hint: '五十音 ナ行', choices: ['な','に','ぬ','ね'] },
-  { q: 'は', a: 'は', hint: '五十音 ハ行', choices: ['は','ひ','ふ','へ'] },
-  { q: 'ま', a: 'ま', hint: '五十音 マ行', choices: ['ま','み','む','め'] },
-  { q: 'や', a: 'や', hint: '五十音 ヤ行', choices: ['や','ゆ','よ','わ'] },
-  { q: 'ら', a: 'ら', hint: '五十音 ラ行', choices: ['ら','り','る','れ'] },
-  { q: 'わ', a: 'わ', hint: '五十音 ワ行', choices: ['わ','を','ん','あ'] },
-  { q: 'い', a: 'い', hint: 'ア行', choices: ['い','え','お','あ'] },
-  { q: 'う', a: 'う', hint: 'ア行', choices: ['う','お','あ','い'] },
-  { q: 'え', a: 'え', hint: 'ア行', choices: ['え','あ','い','う'] },
-  { q: 'お', a: 'お', hint: 'ア行', choices: ['お','う','え','あ'] },
-  { q: 'き', a: 'き', hint: 'カ行', choices: ['き','く','か','け'] },
+async function hashPassword(password, salt) {
+  if (!password) return '';
+  const enc = new TextEncoder().encode(salt + ':' + password);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ════════════════════════════════
+//  BRAILLE DATA (1,2,3 = left column top→bottom, 4,5,6 = right column top→bottom)
+// ════════════════════════════════
+// 基本46音(あ〜ん)・濁音・半濁音・拗音・拗濁音・拗半濁音・促音・長音の点位置は
+// 日本点字委員会/社会福祉法人ほくてんの五十音表・点字記号一覧で確認済みの規則に基づく。
+// 外来語の特殊音(ティ/ファ/ドゥ等)は信頼できる出典で点位置を確認できなかったため、
+// 誤ったデータを学習者に教えてしまうリスクを避けて今回は対象外とする。
+var BASE = {
+  "あ": [1], "い": [1,2], "う": [1,4], "え": [1,2,4], "お": [2,4],
+  "か": [1,6], "き": [1,2,6], "く": [1,4,6], "け": [1,2,4,6], "こ": [2,4,6],
+  "さ": [1,5,6], "し": [1,2,5,6], "す": [1,4,5,6], "せ": [1,2,4,5,6], "そ": [2,4,5,6],
+  "た": [1,3,5], "ち": [1,2,3,5], "つ": [1,3,4,5], "て": [1,2,3,4,5], "と": [2,3,4,5],
+  "な": [1,3], "に": [1,2,3], "ぬ": [1,3,4], "ね": [1,2,3,4], "の": [2,3,4],
+  "は": [1,3,6], "ひ": [1,2,3,6], "ふ": [1,3,4,6], "へ": [1,2,3,4,6], "ほ": [2,3,4,6],
+  "ま": [1,3,5,6], "み": [1,2,3,5,6], "む": [1,3,4,5,6], "め": [1,2,3,4,5,6], "も": [2,3,4,5,6],
+  "や": [3,4], "ゆ": [3,4,6], "よ": [3,4,5],
+  "ら": [1,5], "り": [1,2,5], "る": [1,4,5], "れ": [1,2,4,5], "ろ": [2,4,5],
+  "わ": [3], "を": [3,5], "ん": [3,5,6]
+};
+var CHOON = [2,5];     // ー
+var SOKUON = [2];      // っ
+var DAKUTEN = [5];
+var HANDAKUTEN = [6];
+var YOUON = [4];
+var YOUDAKU = [4,5];
+var YOUHANDAKU = [4,6];
+
+function plain(ch) { return [BASE[ch]]; }
+function withMarker(marker, ch) { return [marker, BASE[ch]]; }
+
+var TOKENS = {};
+Object.keys(BASE).forEach(function (ch) { TOKENS[ch] = plain(ch); });
+TOKENS["ー"] = [CHOON];
+TOKENS["っ"] = [SOKUON];
+
+var DAKUTEN_MAP = {
+  "が":"か","ぎ":"き","ぐ":"く","げ":"け","ご":"こ",
+  "ざ":"さ","じ":"し","ず":"す","ぜ":"せ","ぞ":"そ",
+  "だ":"た","ぢ":"ち","づ":"つ","で":"て","ど":"と",
+  "ば":"は","び":"ひ","ぶ":"ふ","べ":"へ","ぼ":"ほ"
+};
+Object.keys(DAKUTEN_MAP).forEach(function (ch) {
+  TOKENS[ch] = withMarker(DAKUTEN, DAKUTEN_MAP[ch]);
+});
+
+var HANDAKUTEN_MAP = { "ぱ":"は","ぴ":"ひ","ぷ":"ふ","ぺ":"へ","ぽ":"ほ" };
+Object.keys(HANDAKUTEN_MAP).forEach(function (ch) {
+  TOKENS[ch] = withMarker(HANDAKUTEN, HANDAKUTEN_MAP[ch]);
+});
+
+// 拗音は「4の点」+ ローマ字からyを除いた仮名（きゃ=4+か、きゅ=4+く、きょ=4+こ…）。
+var SMALL_Y = ["ゃ","ゅ","ょ"];
+var YOUON_ROWS = {
+  "き": ["か","く","こ"], "し": ["さ","す","そ"], "ち": ["た","つ","と"],
+  "に": ["な","ぬ","の"], "ひ": ["は","ふ","ほ"], "み": ["ま","む","も"], "り": ["ら","る","ろ"]
+};
+Object.keys(YOUON_ROWS).forEach(function (lead) {
+  var bases = YOUON_ROWS[lead];
+  SMALL_Y.forEach(function (smallY, i) {
+    TOKENS[lead + smallY] = withMarker(YOUON, bases[i]);
+  });
+});
+
+// 拗濁音は「4,5の点」+ 対応する拗音の仮名（ぎゃ=4,5+か、じゃ=4,5+さ、びゃ=4,5+は…）。
+var YOUDAKU_ROWS = {
+  "ぎ": ["か","く","こ"], "じ": ["さ","す","そ"], "び": ["は","ふ","ほ"]
+};
+Object.keys(YOUDAKU_ROWS).forEach(function (lead) {
+  var bases = YOUDAKU_ROWS[lead];
+  SMALL_Y.forEach(function (smallY, i) {
+    TOKENS[lead + smallY] = withMarker(YOUDAKU, bases[i]);
+  });
+});
+
+// 拗半濁音は「4,6の点」+ は行の拗音の仮名（ぴゃ=4,6+は、ぴゅ=4,6+ふ、ぴょ=4,6+ほ）。
+var YOUHANDAKU_ROWS = { "ぴ": ["は","ふ","ほ"] };
+Object.keys(YOUHANDAKU_ROWS).forEach(function (lead) {
+  var bases = YOUHANDAKU_ROWS[lead];
+  SMALL_Y.forEach(function (smallY, i) {
+    TOKENS[lead + smallY] = withMarker(YOUHANDAKU, bases[i]);
+  });
+});
+
+// 外来語の特殊音符（2,6の点）: 同じ行の「うぃ→い」のように自然な仮名を飛ばして
+// 母音側の仮名にマーカーを重ねる。濁音版は2,5,6の点（ゔぁ→は、ぐぁ→か）。
+// ていでぃとぅどぅ・しぇじぇちぇ は、た行/さ行の「い・う・え列」仮名に拗音/拗濁音
+// マーカーを重ねて「ち/つ/せ」と区別する。いずれもにってんキッズページ/ほくてん
+// 五十音表・点字記号一覧で確認できた範囲のみ採用し、テュ/デュ/フュ/ヴュ/イェは
+// 規則の一貫性が確認できなかったため見送る。
+var SPECIAL_SOUND = [2, 6];
+var SPECIAL_SOUND_DAKU = [2, 5, 6];
+var SPECIAL_SOUND_MAP = {
+  "うぃ":"い", "うぇ":"え", "うぉ":"お",
+  "くぁ":"か", "くぃ":"き", "くぇ":"け", "くぉ":"こ",
+  "つぁ":"た", "つぃ":"ち", "つぇ":"て", "つぉ":"と",
+  "ふぁ":"は", "ふぃ":"ひ", "ふぇ":"へ", "ふぉ":"ほ"
+};
+Object.keys(SPECIAL_SOUND_MAP).forEach(function (combo) {
+  TOKENS[combo] = withMarker(SPECIAL_SOUND, SPECIAL_SOUND_MAP[combo]);
+});
+var SPECIAL_SOUND_DAKU_MAP = { "ゔぁ":"は", "ゔぃ":"ひ", "ゔぇ":"へ", "ゔぉ":"ほ", "ぐぁ":"か" };
+Object.keys(SPECIAL_SOUND_DAKU_MAP).forEach(function (combo) {
+  TOKENS[combo] = withMarker(SPECIAL_SOUND_DAKU, SPECIAL_SOUND_DAKU_MAP[combo]);
+});
+TOKENS["ゔ"] = withMarker(DAKUTEN, "う");
+TOKENS["しぇ"] = withMarker(YOUON, "せ");
+TOKENS["じぇ"] = withMarker(YOUDAKU, "せ");
+TOKENS["ちぇ"] = withMarker(YOUON, "て");
+TOKENS["てぃ"] = withMarker(YOUON, "ち");
+TOKENS["でぃ"] = withMarker(YOUDAKU, "ち");
+TOKENS["とぅ"] = withMarker(YOUON, "つ");
+TOKENS["どぅ"] = withMarker(YOUDAKU, "つ");
+
+// ════════════════════════════════
+//  WORD LISTS（拗音・濁音・半濁音・拗濁音・拗半濁音・促音・長音・ん・を・特殊音を広く含む）
+// ════════════════════════════════
+var WORDS = [
+  "さくら","りんご","ねこ","いぬ","つくえ","はなび","えんぴつ","おんがく","しんぶん","てがみ",
+  "たんぽぽ","ひまわり","けんだま","おかあさん","とけい","かばん","でんしゃ","おみやげ","たまご","かえる",
+  "ぶどう","たぬき","からす","すずめ","ことり","てんとうむし","かぶとむし","くらげ","らっぱ","おりがみ",
+  "がっこう","せんせい","きょうしつ","しゃしん","じてんしゃ","でんわ","びょういん","じゃがいも","ぎゅうにゅう","りょこう",
+  "ちょきん","にゅうがく","ひゃくえん","みょうじ","きゃべつ","ぴょんぴょん","しゅくだい","しょうがっこう","びゃくや","にっき",
+  "けーき","らーめん","あさがお","あひる","くまさん","ぱんだ","てんき","たいよう","あおぞら","ほし",
+  "ぱーてぃー","てぃっしゅ","ちぇっく","じぇっと","ふぁいる","うぃんく","くぃず","しぇふ"
 ];
 
-// ════════════════════════════════
-//  STATE
-// ════════════════════════════════
-let myId = null;
-let myName = '';
-let roomId = '';
-let isHost = false;
-let questionCount = 10;
-let currentQuestions = [];
-let currentRound = 0;
-let myScore = 0;
-let timerInterval = null;
-let timerEnd = null;
-let answered = false;
-let listeners = {};
+TOKENS[" "] = [[]];
+var SENTENCES = [
+  "さくら さく", "がっこう いく", "ねこ すき", "とり とぶ",
+  "あめ ふる", "ほし ひかる", "あさ おはよう", "ほん よむ",
+  "そら あおい", "かぜ ふく", "とけい なる", "りんご あかい",
+  "えほん を みる", "ほん を かう", "がっこう を でる", "おかし を たべる",
+  "けんだま で あそぶ", "じてんしゃ に のる", "せんせい に きく", "しゃしん を とる",
+  "ぎゅうにゅう を のむ", "きゃべつ を きる", "ひゃくえん を はらう", "らーめん を つくる",
+  "くまさん が ねる", "とんぼ が とぶ", "あひる が あるく", "たんぽぽ が さく",
+  "おみやげ を かう", "ぶどう が あまい"
+];
 
-// ════════════════════════════════
-//  UTIL
-// ════════════════════════════════
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+var NUMBER_SIGN = [3, 4, 5, 6];
+var DIGIT_DOTS = {
+  "0": [2,4,5], "1": [1], "2": [1,2], "3": [1,4], "4": [1,4,5],
+  "5": [1,5], "6": [1,2,4], "7": [1,2,4,5], "8": [1,2,5], "9": [2,4]
+};
+var NUMBERS = [
+  "0","1","2","3","4","5","6","7","8","9",
+  "10","12","15","21","28","34","37","46","50","58",
+  "63","64","79","87","91",
+  "100","101","123","156","200","210","314","365","480","500",
+  "555","678","709","840","925","999",
+  "1000","1001","1234","1500","1999","2024","2025","2026","3000","4096"
+];
+
+function numberToGroups(numStr) {
+  var digits = Array.from(numStr);
+  var groups = [[NUMBER_SIGN, DIGIT_DOTS[digits[0]]]];
+  for (var i = 1; i < digits.length; i++) groups.push([DIGIT_DOTS[digits[i]]]);
+  return groups;
+}
+function isDigit(tok) { return tok.length === 1 && tok >= "0" && tok <= "9"; }
+
+function tokenize(word) {
+  var chars = Array.from(word);
+  var tokens = [];
+  var i = 0;
+  while (i < chars.length) {
+    var two = chars.slice(i, i + 2).join("");
+    if (TOKENS[two]) { tokens.push(two); i += 2; continue; }
+    var one = chars[i];
+    if (TOKENS[one]) { tokens.push(one); i += 1; continue; }
+    if (isDigit(one)) { tokens.push(one); i += 1; continue; }
+    i += 1;
+  }
+  return tokens;
 }
 
-function genRoomCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+function wordToGroups(word) {
+  var tokens = tokenize(word);
+  var groups = [];
+  tokens.forEach(function (tok, i) {
+    if (tok === " ") return;
+    if (isDigit(tok)) {
+      var startOfRun = i === 0 || !isDigit(tokens[i - 1]);
+      groups.push(startOfRun ? [NUMBER_SIGN, DIGIT_DOTS[tok]] : [DIGIT_DOTS[tok]]);
+    } else {
+      groups.push(TOKENS[tok]);
+    }
+  });
+  return groups;
 }
+function wordToDisplayTokens(word) { return tokenize(word); }
+function numberToDisplayTokens(numStr) { return Array.from(numStr); }
 
+var DOT_ORDER = [1, 4, 2, 5, 3, 6];
+
+// ════════════════════════════════
+//  SHARED UTIL
+// ════════════════════════════════
 function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
   }
   return a;
 }
-
 function escapeHtml(str) {
-  const div = document.createElement('div');
+  var div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
 }
-
-function showFeedback(msg, type, duration = 1200) {
-  const overlay = document.getElementById('feedback-overlay');
-  const pill = document.getElementById('feedback-pill');
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function (s) { s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+function showFeedbackPill(msg, type, duration) {
+  duration = duration || 1200;
+  var overlay = document.getElementById('feedback-overlay');
+  var pill = document.getElementById('feedback-pill');
   pill.textContent = msg;
   pill.className = 'feedback-pill ' + type;
   overlay.classList.add('show');
-  setTimeout(() => overlay.classList.remove('show'), duration);
+  window.setTimeout(function () { overlay.classList.remove('show'); }, duration);
+}
+function launchConfetti() {
+  var el = document.getElementById('confetti');
+  el.innerHTML = '';
+  el.classList.remove('hidden');
+  var colors = ['#46178f', '#e21b3c', '#ffa602', '#1368ce', '#26890c'];
+  for (var i = 0; i < 40; i++) {
+    var s = document.createElement('span');
+    s.style.left = (Math.random() * 100) + '%';
+    s.style.background = colors[i % colors.length];
+    s.style.animationDelay = (Math.random() * 0.6) + 's';
+    s.style.transform = 'rotate(' + (Math.random() * 360) + 'deg)';
+    el.appendChild(s);
+  }
+  window.setTimeout(function () { el.classList.add('hidden'); el.innerHTML = ''; }, 3000);
+}
+window.showScreen = showScreen;
+window.goHome = function () { location.reload(); };
+
+// ════════════════════════════════
+//  RENDER LAYER（ソロ・オンライン両方の点字タップ入力が共通で使う）
+//  isHost等のロール情報は一切参照しない。interactiveフラグだけで挙動が決まる。
+// ════════════════════════════════
+function setsEqual(arr, set) {
+  if (arr.length !== set.size) return false;
+  return arr.every(function (d) { return set.has(d); });
 }
 
-// ════════════════════════════════
-//  BRAILLE RENDER
-// ════════════════════════════════
-function renderBrailleChar(char, large = false) {
-  const dots = BRAILLE[char] || [];
-  const cell = document.createElement('div');
-  cell.className = large ? 'braille-cell' : 'braille-char';
-
-  // dot positions: [1,4, 2,5, 3,6] left-col then right-col, top to bottom
-  // Grid: row1=[1,4], row2=[2,5], row3=[3,6]
-  const positions = [1,4, 2,5, 3,6];
-  positions.forEach(pos => {
-    const d = document.createElement('div');
-    d.className = 'dot' + (dots.includes(pos) ? ' on' : '');
-    cell.appendChild(d);
+function buildCellElement(dotsOnSet, opts) {
+  opts = opts || {};
+  var cell = document.createElement("div");
+  cell.className = "braille-cell";
+  DOT_ORDER.forEach(function (dotNum) {
+    var isOn = dotsOnSet.has(dotNum);
+    if (opts.interactive) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "dot" + (isOn ? " on" : "");
+      btn.textContent = dotNum;
+      btn.setAttribute("aria-pressed", isOn ? "true" : "false");
+      btn.setAttribute("aria-label", (opts.label || "") + dotNum + "の点");
+      btn.addEventListener("click", opts.onToggle.bind(null, dotNum, btn));
+      cell.appendChild(btn);
+    } else {
+      var d = document.createElement("div");
+      d.className = "dot" + (isOn ? " on" : "");
+      d.textContent = dotNum;
+      cell.appendChild(d);
+    }
   });
   return cell;
 }
 
-function renderBrailleString(str, containerId, large = false) {
-  const container = document.getElementById(containerId);
-  container.innerHTML = '';
-  [...str].forEach(c => {
-    if (BRAILLE[c]) container.appendChild(renderBrailleChar(c, large));
-  });
-}
-
-// Title animation
-function animateTitleBraille() {
-  const chars = 'てんじ';
-  const container = document.getElementById('title-braille');
-  container.innerHTML = '';
-  [...chars].forEach(c => container.appendChild(renderBrailleChar(c, false)));
-}
-
-// ════════════════════════════════
-//  SCREEN NAVIGATION (global)
-// ════════════════════════════════
-window.showScreen = showScreen;
-window.showCreateRoom = () => showScreen('screen-create');
-window.showJoinRoom = () => showScreen('screen-join');
-
-window.setQCount = (n) => {
-  questionCount = n;
-  ['q5','q10','q15'].forEach(id => {
-    document.getElementById(id).className = 'btn btn-secondary btn-sm';
-  });
-  document.getElementById('q' + n).className = 'btn btn-primary btn-sm';
-};
-
-// ════════════════════════════════
-//  CREATE ROOM
-// ════════════════════════════════
-window.createRoom = async () => {
-  if (!isConfigured) {
-    alert('Firebase の設定が必要です。HTMLファイルの firebaseConfig を書き換えてください。');
-    return;
-  }
-  const name = document.getElementById('host-name').value.trim();
-  if (!name) { alert('名前を入力してください'); return; }
-
-  await authReady;
-  myName = name;
-  isHost = true;
-  roomId = genRoomCode();
-
-  const questions = shuffle(ALL_QUESTIONS).slice(0, questionCount).map((q, i) => ({
-    ...q,
-    choices: shuffle(q.choices),
-    index: i
-  }));
-
-  currentQuestions = questions;
-
-  await set(ref(db, `rooms/${roomId}`), {
-    host: myId,
-    status: 'lobby',
-    questionCount,
-    questions,
-    round: 0,
-    players: {
-      [myId]: { name, score: 0, joined: Date.now() }
-    }
-  });
-
-  document.getElementById('display-room-code').textContent = roomId;
-  listenLobbyHost();
-  showScreen('screen-lobby-host');
-};
-
-// ════════════════════════════════
-//  JOIN ROOM
-// ════════════════════════════════
-window.joinRoom = async () => {
-  if (!isConfigured) {
-    alert('Firebase の設定が必要です。HTMLファイルの firebaseConfig を書き換えてください。');
-    return;
-  }
-  const name = document.getElementById('player-name').value.trim();
-  const code = document.getElementById('room-code-input').value.trim();
-  if (!name) { alert('名前を入力してください'); return; }
-  if (code.length !== 6) { alert('6桁のコードを入力してください'); return; }
-
-  await authReady;
-  myName = name;
-  roomId = code;
-
-  const snap = await get(ref(db, `rooms/${roomId}`));
-  if (!snap.exists()) { alert('ルームが見つかりません'); return; }
-
-  await update(ref(db, `rooms/${roomId}/players/${myId}`), {
-    name, score: 0, joined: Date.now()
-  });
-
-  document.getElementById('lobby-room-info').textContent = 'ルームコード: ' + roomId;
-  listenLobbyPlayer();
-  showScreen('screen-lobby-player');
-};
-
-// ════════════════════════════════
-//  LOBBY LISTENERS
-// ════════════════════════════════
-function listenLobbyHost() {
-  const r = ref(db, `rooms/${roomId}/players`);
-  listeners.players = onValue(r, snap => {
-    const players = snap.val() || {};
-    renderPlayerList('host-player-list', players);
-  });
-
-  const statusRef = ref(db, `rooms/${roomId}/status`);
-  listeners.status = onValue(statusRef, snap => {
-    if (snap.val() === 'playing') {
-      off(ref(db, `rooms/${roomId}/players`), 'value', listeners.players);
-      off(statusRef, 'value', listeners.status);
-      listenGame();
-      showScreen('screen-game');
-    }
-  });
-}
-
-function listenLobbyPlayer() {
-  const r = ref(db, `rooms/${roomId}/players`);
-  listeners.players = onValue(r, snap => {
-    const players = snap.val() || {};
-    renderPlayerList('player-player-list', players);
-  });
-
-  const statusRef = ref(db, `rooms/${roomId}/status`);
-  listeners.status = onValue(statusRef, snap => {
-    if (snap.val() === 'playing') {
-      off(ref(db, `rooms/${roomId}/players`), 'value', listeners.players);
-      off(statusRef, 'value', listeners.status);
-      listenGame();
-      showScreen('screen-game');
-    }
-  });
-}
-
-function renderPlayerList(containerId, players) {
-  const list = document.getElementById(containerId);
-  list.innerHTML = '';
-  Object.values(players)
-    .sort((a, b) => a.joined - b.joined)
-    .forEach(p => {
-      const div = document.createElement('div');
-      div.className = 'player-item';
-      div.innerHTML = `<div class="player-dot"></div><span>${escapeHtml(p.name)}</span><span class="player-score">${p.score}点</span>`;
-      list.appendChild(div);
+function buildMiniCellGroup(cells, stateClass) {
+  var groupEl = document.createElement("div");
+  groupEl.className = "mini-cell-group";
+  cells.forEach(function (dots) {
+    var cell = document.createElement("div");
+    cell.className = "mini-cell" + (stateClass ? " " + stateClass : "");
+    DOT_ORDER.forEach(function (dotNum) {
+      var dot = document.createElement("div");
+      dot.className = "mini-dot" + (dots.indexOf(dotNum) !== -1 ? " on" : "");
+      cell.appendChild(dot);
     });
+    groupEl.appendChild(cell);
+  });
+  return groupEl;
 }
 
-// ════════════════════════════════
-//  START GAME (Host)
-// ════════════════════════════════
-window.startGame = async () => {
-  await update(ref(db, `rooms/${roomId}`), {
-    status: 'playing',
-    round: 0
-  });
-  await startRound(0);
-};
+// ソロ・オンラインの2画面で全く同じ構造のDOMを2セット作る（id重複を避けるため
+// 静的HTMLには書かず、共通関数から都度生成する）。フィードバック表示行だけは
+// 各画面の固定位置に置きたいので、呼び出し側で別途 feedbackEl を differentiate して渡す。
+function buildAnswerEngineDom(mountEl) {
+  mountEl.innerHTML = "";
+  var wordDisplay = document.createElement("div");
+  wordDisplay.className = "word-display";
+  var cellsRow = document.createElement("div");
+  cellsRow.className = "cells-row";
+  var answerInputWrap = document.createElement("div");
+  answerInputWrap.className = "answer-input-wrap hidden";
+  var answerInput = document.createElement("input");
+  answerInput.type = "text";
+  answerInput.placeholder = "ひらがなで入力";
+  answerInput.lang = "ja";
+  answerInput.autocomplete = "off";
+  answerInput.autocorrect = "off";
+  answerInput.autocapitalize = "off";
+  answerInput.spellcheck = false;
+  answerInputWrap.appendChild(answerInput);
+  var answerWrap = document.createElement("div");
+  var controls = document.createElement("div");
+  controls.className = "controls";
+  var clearBtn = document.createElement("button");
+  clearBtn.type = "button"; clearBtn.className = "btn"; clearBtn.textContent = "クリア";
+  var checkBtn = document.createElement("button");
+  checkBtn.type = "button"; checkBtn.className = "btn btn-primary"; checkBtn.textContent = "答え合わせ";
+  controls.appendChild(clearBtn); controls.appendChild(checkBtn);
+  mountEl.appendChild(wordDisplay);
+  mountEl.appendChild(cellsRow);
+  mountEl.appendChild(answerInputWrap);
+  mountEl.appendChild(answerWrap);
+  mountEl.appendChild(controls);
 
-async function startRound(roundIdx) {
-  currentRound = roundIdx;
-  answered = false;
-  const q = currentQuestions[roundIdx];
+  // 読みモードのIME確定後、ひらがな以外（漢字変換結果など）が残っていたら取り除く。
+  var NON_HIRAGANA_RE = /[^ぁ-んー゛ゔ]/g;
+  function sanitize() {
+    var clean = answerInput.value.replace(NON_HIRAGANA_RE, "");
+    if (clean !== answerInput.value) answerInput.value = clean;
+  }
+  answerInput.addEventListener("input", function (e) { if (!e.isComposing) sanitize(); });
+  answerInput.addEventListener("compositionend", sanitize);
 
-  await update(ref(db, `rooms/${roomId}`), {
-    round: roundIdx,
-    roundStatus: 'active',
-    roundAnswer: null,
-    roundWinner: null,
-    roundWinnerName: null,
-    roundStartTime: Date.now(),
-  });
-
-  await set(ref(db, `rooms/${roomId}/answers`), null);
+  return {
+    mountEl: mountEl, wordDisplay: wordDisplay, cellsRow: cellsRow,
+    answerInputWrap: answerInputWrap, answerInput: answerInput, answerWrap: answerWrap,
+    clearBtn: clearBtn, checkBtn: checkBtn
+  };
 }
 
-// ════════════════════════════════
-//  GAME LISTENER
-// ════════════════════════════════
-function listenGame() {
-  const roomRef = ref(db, `rooms/${roomId}`);
-  listeners.game = onValue(roomRef, snap => {
-    const room = snap.val();
-    if (!room) return;
+// engine = { cellsRow, wordDisplay, answerInputWrap, answerInput, answerWrap,
+//            clearBtn, checkBtn, feedbackEl }  — DOM refs for one mounted instance.
+// state  = { correctGroups, displayTokens, userCells, checked, activeGroupIndex,
+//            wordHasMistake, currentWord, currentMode, characters: [] }
+function createAnswerEngine(dom) {
+  var state = null;
+  var hooks = null;
 
-    currentRound = room.round || 0;
-    currentQuestions = room.questions || [];
+  function fitCellsToOneRow(totalCells, groupCount) {
+    if (!totalCells) return;
+    var rowGap = 6, withinGap = 3, cellPad = 4, dotGap = 3, minDot = 8;
+    var maxDot = window.matchMedia("(pointer: coarse)").matches ? 50 : 40;
+    var containerWidth = dom.cellsRow.clientWidth || dom.cellsRow.parentElement.clientWidth;
+    var totalGaps = (groupCount - 1) * rowGap + (totalCells - groupCount) * withinGap;
+    var available = containerWidth - totalGaps - totalCells * (dotGap + 2 * cellPad);
+    var dot = Math.floor(available / (totalCells * 2));
+    dot = Math.max(minDot, Math.min(maxDot, dot));
+    var root = document.documentElement.style;
+    root.setProperty("--dot-size", dot + "px");
+    root.setProperty("--cell-gap", rowGap + "px");
+    root.setProperty("--cell-pad", cellPad + "px");
+    root.setProperty("--dot-gap", dotGap + "px");
+    root.setProperty("--within-gap", withinGap + "px");
+  }
 
-    const q = currentQuestions[currentRound];
-    if (!q) return;
+  function maxGroupSize() {
+    return state.correctGroups.reduce(function (max, g) { return Math.max(max, g.length); }, 1);
+  }
+  function totalCellCount() {
+    return state.correctGroups.reduce(function (sum, g) { return sum + g.length; }, 0);
+  }
 
-    if (room.roundStatus === 'active') {
-      renderGameScreen(q, room);
-    } else if (room.roundStatus === 'result') {
-      renderRoundResult(room, q);
-    } else if (room.status === 'finished') {
-      renderFinalScreen(room);
+  function appendGroupElement(gIdx) {
+    var group = state.correctGroups[gIdx];
+    var groupEl = document.createElement("div");
+    groupEl.className = "cell-group";
+    group.forEach(function (_, cIdx) {
+      var cell = buildCellElement(new Set(), {
+        interactive: true,
+        label: (gIdx + 1) + "文字目" + (cIdx + 1) + "マス目 ",
+        onToggle: function (dotNum, btn) {
+          if (gIdx !== state.activeGroupIndex || state.checked) return;
+          var set = state.userCells[gIdx][cIdx];
+          if (set.has(dotNum)) {
+            set.delete(dotNum); btn.classList.remove("on"); btn.setAttribute("aria-pressed", "false");
+          } else {
+            set.add(dotNum); btn.classList.add("on"); btn.setAttribute("aria-pressed", "true");
+          }
+        }
+      });
+      groupEl.appendChild(cell);
+    });
+    dom.cellsRow.appendChild(groupEl);
+    return groupEl;
+  }
+
+  function renderCells(interactive) {
+    dom.cellsRow.innerHTML = "";
+    if (!interactive) {
+      state.correctGroups.forEach(function (group) {
+        var groupEl = document.createElement("div");
+        groupEl.className = "cell-group";
+        group.forEach(function (dots) {
+          groupEl.appendChild(buildCellElement(new Set(dots), { interactive: false }));
+        });
+        dom.cellsRow.appendChild(groupEl);
+      });
+      return;
     }
-  });
-}
+    state.userCells = state.correctGroups.map(function (group) { return group.map(function () { return new Set(); }); });
+    appendGroupElement(state.activeGroupIndex);
+  }
 
-function renderGameScreen(q, room) {
-  answered = false;
-  showScreen('screen-game');
+  function labelForGroup(gIdx) {
+    var counter = 0;
+    for (var i = 0; i < state.displayTokens.length; i++) {
+      if (state.displayTokens[i] === " ") continue;
+      if (counter === gIdx) return state.displayTokens[i];
+      counter++;
+    }
+    return "";
+  }
 
-  document.getElementById('round-label').textContent =
-    `問題 ${currentRound + 1} / ${room.questionCount}`;
-  document.getElementById('my-score-label').textContent = myScore + '点';
+  function captureCurrentGroupResult(gIdx) {
+    var ok = dom.cellsRow.querySelector(".braille-cell.wrong") === null;
+    return {
+      label: labelForGroup(gIdx),
+      correct: ok,
+      userDots: state.userCells[gIdx].map(function (set) { return Array.from(set); }),
+      correctDots: state.correctGroups[gIdx]
+    };
+  }
 
-  renderBrailleString(q.q, 'game-braille', true);
-  document.getElementById('hint-text').textContent = '点字を読んで選んでください！';
+  function showDotLegend() {
+    dom.answerWrap.innerHTML = "";
+    var legend = document.createElement("div");
+    legend.className = "dot-legend";
+    legend.innerHTML = "<span class=\"legend-missing\">青の点線</span>＝押し忘れた点、<span class=\"legend-extra\">赤</span>＝不要だった点";
+    dom.answerWrap.appendChild(legend);
+  }
 
-  // Choices
-  const grid = document.getElementById('choice-grid');
-  grid.innerHTML = '';
-  q.choices.forEach(c => {
-    const btn = document.createElement('button');
-    btn.className = 'choice-btn';
-    btn.textContent = c;
-    btn.onclick = () => submitAnswer(c, q);
-    grid.appendChild(btn);
-  });
+  function showTextAnswer() {
+    dom.answerWrap.innerHTML = "";
+    var wrap = document.createElement("div");
+    wrap.className = "answer-wrap";
+    var label = document.createElement("div");
+    label.className = "answer-label";
+    label.textContent = "正しい答え";
+    var text = document.createElement("div");
+    text.className = "answer-text";
+    text.textContent = state.currentWord;
+    wrap.appendChild(label); wrap.appendChild(text);
+    dom.answerWrap.appendChild(wrap);
+  }
 
-  // Timer (15 seconds)
-  startTimer(15000, room.roundStartTime || Date.now());
-}
+  function updateActionBtnLabel() {
+    if (!state.checked) { dom.checkBtn.textContent = "答え合わせ"; return; }
+    if (state.currentMode !== "reading" && state.activeGroupIndex < state.correctGroups.length - 1) {
+      dom.checkBtn.textContent = "次の文字";
+    } else {
+      dom.checkBtn.textContent = hooks.finishLabel();
+    }
+  }
 
-function startTimer(duration, startTime) {
-  clearInterval(timerInterval);
-  const fill = document.getElementById('timer-fill');
+  function renderWordDisplay() {
+    dom.wordDisplay.innerHTML = "";
+    var groupCounter = 0;
+    state.displayTokens.forEach(function (tok) {
+      var span = document.createElement("span");
+      span.textContent = tok;
+      if (tok !== " ") {
+        if (groupCounter === state.activeGroupIndex) span.classList.add("active-char");
+        groupCounter++;
+      }
+      dom.wordDisplay.appendChild(span);
+    });
+  }
 
-  timerInterval = setInterval(() => {
-    const elapsed = Date.now() - startTime;
-    const pct = Math.max(0, 100 - (elapsed / duration) * 100);
-    fill.style.width = pct + '%';
-    fill.style.background = pct < 30 ? '#e05050' : 'var(--accent)';
-
-    if (pct <= 0) {
-      clearInterval(timerInterval);
-      if (isHost && !answered) {
-        // Time up — reveal result with no winner
-        revealResult(null, null, null);
+  function checkAnswer() {
+    if (state.checked) return;
+    state.checked = true;
+    if (state.currentMode === "reading") {
+      dom.answerInput.disabled = true;
+      var allCorrect = dom.answerInput.value.trim() === state.currentWord;
+      state.readingResult = { userAnswer: dom.answerInput.value.trim(), correct: allCorrect };
+      if (allCorrect) {
+        dom.feedbackEl.textContent = "正解です!";
+        dom.feedbackEl.className = "feedback correct";
+        hooks.onCorrectFeedback && hooks.onCorrectFeedback();
+      } else {
+        dom.feedbackEl.textContent = "不正解";
+        dom.feedbackEl.className = "feedback wrong";
+        showTextAnswer();
+      }
+    } else {
+      var groupEl = dom.cellsRow.children[0];
+      var cellEls = groupEl.querySelectorAll(".braille-cell");
+      var group = state.correctGroups[state.activeGroupIndex];
+      var groupOk = true;
+      group.forEach(function (correctDots, cIdx) {
+        var userSet = state.userCells[state.activeGroupIndex][cIdx];
+        var ok = setsEqual(correctDots, userSet);
+        cellEls[cIdx].classList.add(ok ? "correct" : "wrong", "locked-cell");
+        if (!ok) {
+          groupOk = false;
+          cellEls[cIdx].querySelectorAll(".dot").forEach(function (btn) {
+            var dotNum = parseInt(btn.textContent, 10);
+            var shouldBeOn = correctDots.indexOf(dotNum) !== -1;
+            var isOn = userSet.has(dotNum);
+            if (shouldBeOn && !isOn) btn.classList.add("missing");
+            else if (!shouldBeOn && isOn) btn.classList.add("extra");
+          });
+        }
+      });
+      if (groupOk) {
+        dom.feedbackEl.textContent = (state.activeGroupIndex + 1) + "文字目: 正解!";
+        dom.feedbackEl.className = "feedback correct";
+        hooks.onCorrectFeedback && hooks.onCorrectFeedback();
+      } else {
+        dom.feedbackEl.textContent = (state.activeGroupIndex + 1) + "文字目: 不正解";
+        dom.feedbackEl.className = "feedback wrong";
+        showDotLegend();
       }
     }
-  }, 100);
-}
-
-// ════════════════════════════════
-//  SUBMIT ANSWER
-// ════════════════════════════════
-async function submitAnswer(choice, q) {
-  if (answered) return;
-  answered = true;
-
-  // Disable all buttons
-  document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
-
-  const ts = Date.now();
-  await set(ref(db, `rooms/${roomId}/answers/${myId}`), {
-    name: myName,
-    choice,
-    correct: choice === q.a,
-    ts
-  });
-
-  // Host checks for first correct answer
-  if (isHost) {
-    setTimeout(() => checkAnswers(q), 500);
+    updateActionBtnLabel();
   }
+
+  function clearInput() {
+    if (!state || state.checked) return;
+    dom.feedbackEl.textContent = "";
+    dom.feedbackEl.className = "feedback";
+    dom.answerWrap.innerHTML = "";
+    if (state.currentMode === "reading") {
+      dom.answerInput.value = "";
+      dom.answerInput.focus();
+      return;
+    }
+    var groupEl = dom.cellsRow.children[0];
+    groupEl.querySelectorAll(".braille-cell").forEach(function (cellEl, cIdx) {
+      cellEl.classList.remove("correct", "wrong", "locked-cell");
+      cellEl.querySelectorAll(".dot").forEach(function (d) {
+        d.classList.remove("on", "missing", "extra");
+        d.setAttribute("aria-pressed", "false");
+      });
+      state.userCells[state.activeGroupIndex][cIdx] = new Set();
+    });
+  }
+
+  function advanceToNextGroup() {
+    var result = captureCurrentGroupResult(state.activeGroupIndex);
+    state.characters.push(result);
+    if (!result.correct) state.wordHasMistake = true;
+    state.activeGroupIndex++;
+    state.checked = false;
+    dom.feedbackEl.textContent = "";
+    dom.feedbackEl.className = "feedback";
+    dom.answerWrap.innerHTML = "";
+    dom.cellsRow.innerHTML = "";
+    var groupEl = appendGroupElement(state.activeGroupIndex);
+    groupEl.querySelector(".dot").focus();
+    updateActionBtnLabel();
+    renderWordDisplay();
+  }
+
+  function handleAdvanceOrCheck() {
+    if (!state) return; // load()がまだ呼ばれていない（問題未配信）状態でのクリックは無視
+    if (!state.checked) { checkAnswer(); return; }
+    if (state.currentMode !== "reading" && state.activeGroupIndex < state.correctGroups.length - 1) {
+      advanceToNextGroup();
+      return;
+    }
+    if (state.currentMode !== "reading") {
+      var result = captureCurrentGroupResult(state.activeGroupIndex);
+      state.characters.push(result);
+      var anyWrong = state.wordHasMistake || !result.correct;
+      hooks.onFinish(!anyWrong, state.characters);
+    } else {
+      hooks.onFinish(state.readingResult.correct, [{ label: state.currentWord, correct: state.readingResult.correct, userAnswer: state.readingResult.userAnswer }]);
+    }
+  }
+
+  function load(mode, word, finishHooks) {
+    hooks = finishHooks;
+    state = {
+      currentMode: mode,
+      currentWord: word,
+      correctGroups: mode === "number" ? numberToGroups(word) : wordToGroups(word),
+      displayTokens: mode === "number" ? numberToDisplayTokens(word) : wordToDisplayTokens(word),
+      checked: false,
+      activeGroupIndex: 0,
+      wordHasMistake: false,
+      characters: [],
+      userCells: [],
+      readingResult: null
+    };
+    dom.feedbackEl.textContent = "";
+    dom.feedbackEl.className = "feedback";
+    dom.answerWrap.innerHTML = "";
+    dom.answerWrap.style.minHeight = (mode === "reading") ? "61px" : "";
+    updateActionBtnLabel();
+
+    if (mode === "reading") {
+      dom.wordDisplay.classList.add("hidden");
+      dom.answerInputWrap.classList.remove("hidden");
+      dom.answerInput.disabled = false;
+      dom.answerInput.value = "";
+      fitCellsToOneRow(totalCellCount(), state.correctGroups.length);
+      renderCells(false);
+      window.setTimeout(function () { dom.answerInput.focus(); }, 0);
+    } else {
+      dom.wordDisplay.classList.remove("hidden");
+      renderWordDisplay();
+      dom.answerInputWrap.classList.add("hidden");
+      fitCellsToOneRow(maxGroupSize(), 1);
+      renderCells(true);
+    }
+  }
+
+  function refit() {
+    if (!state) return;
+    if (state.currentMode === "reading") fitCellsToOneRow(totalCellCount(), state.correctGroups.length);
+    else fitCellsToOneRow(maxGroupSize(), 1);
+  }
+
+  dom.checkBtn.addEventListener("click", handleAdvanceOrCheck);
+  dom.clearBtn.addEventListener("click", clearInput);
+
+  return { load: load, refit: refit, mountEl: dom.mountEl };
 }
 
-async function checkAnswers(q) {
-  const snap = await get(ref(db, `rooms/${roomId}/answers`));
-  const answers = snap.val() || {};
+// ════════════════════════════════
+//  SOLO PRACTICE MODE
+// ════════════════════════════════
+var QUIZ_LENGTH = 10;
+var soloDom = buildAnswerEngineDom(document.getElementById('soloAnswerMount'));
+soloDom.feedbackEl = document.getElementById('soloFeedback');
+var soloEngine = createAnswerEngine(soloDom);
 
-  let winner = null;
-  let winnerName = null;
-  let winnerTs = Infinity;
+var solo = { quizWords: [], questionIndex: 0, sessionLength: QUIZ_LENGTH, correct: 0, mode: 'word', history: [] };
 
-  Object.entries(answers).forEach(([uid, ans]) => {
-    if (ans.correct && ans.ts < winnerTs) {
-      winner = uid;
-      winnerName = ans.name;
-      winnerTs = ans.ts;
+function startSoloQuiz(mode) {
+  solo.mode = mode;
+  var pool = mode === 'training' ? Object.keys(TOKENS).filter(function (t) { return t !== ' '; })
+    : mode === 'sentence' ? SENTENCES
+    : mode === 'number' ? NUMBERS
+    : WORDS;
+  solo.quizWords = mode === 'training' ? shuffle(pool) : shuffle(pool).slice(0, QUIZ_LENGTH);
+  solo.sessionLength = solo.quizWords.length;
+  solo.questionIndex = 0;
+  solo.correct = 0;
+  solo.history = [];
+  document.getElementById('questionTotal').textContent = solo.sessionLength;
+  document.getElementById('correctCount').textContent = 0;
+  showScreen('screen-solo-quiz');
+  loadSoloQuestion();
+}
+
+function loadSoloQuestion() {
+  var word = solo.quizWords[solo.questionIndex];
+  document.getElementById('questionNum').textContent = solo.questionIndex + 1;
+  soloEngine.load(solo.mode === 'number' ? 'number' : solo.mode, word, {
+    finishLabel: function () {
+      return solo.questionIndex === solo.sessionLength - 1 ? '結果を見る' : '次の問題';
+    },
+    onCorrectFeedback: function () {},
+    onFinish: function (allCorrect, characters) {
+      solo.history.push({ word: word, mode: solo.mode, correct: allCorrect, characters: characters });
+      if (allCorrect) {
+        solo.correct++;
+        document.getElementById('correctCount').textContent = solo.correct;
+      }
+      solo.questionIndex++;
+      if (solo.questionIndex >= solo.sessionLength) showSoloResults();
+      else loadSoloQuestion();
     }
   });
-
-  if (winner) {
-    // Update score
-    const snap2 = await get(ref(db, `rooms/${roomId}/players/${winner}/score`));
-    const prevScore = snap2.val() || 0;
-    await set(ref(db, `rooms/${roomId}/players/${winner}/score`), prevScore + 1);
-    if (winner === myId) myScore = prevScore + 1;
-  }
-
-  await revealResult(q.a, winner, winnerName);
 }
 
-async function revealResult(answer, winner, winnerName) {
-  clearInterval(timerInterval);
-
-  const q = currentQuestions[currentRound];
-  await update(ref(db, `rooms/${roomId}`), {
-    roundStatus: 'result',
-    roundAnswer: answer || (q ? q.a : ''),
-    roundWinner: winner,
-    roundWinnerName: winnerName,
-  });
-}
-
-// ════════════════════════════════
-//  ROUND RESULT SCREEN
-// ════════════════════════════════
-async function renderRoundResult(room, q) {
-  clearInterval(timerInterval);
-  showScreen('screen-round-result');
-
-  document.getElementById('result-answer').textContent = room.roundAnswer || q.a;
-
-  const winnerBox = document.getElementById('winner-box');
-  const winnerNameEl = document.getElementById('winner-name');
-  if (room.roundWinner) {
-    winnerBox.style.display = 'block';
-    winnerNameEl.textContent = room.roundWinnerName + ' さん！';
-    if (room.roundWinner === myId) showFeedback('正解！ +1点', 'correct');
-  } else {
-    winnerBox.style.display = 'none';
-    showFeedback('時間切れ…', 'info');
-  }
-
-  // Scores
-  const snap = await get(ref(db, `rooms/${roomId}/players`));
-  const players = snap.val() || {};
-  const sorted = Object.values(players).sort((a, b) => b.score - a.score);
-
-  const list = document.getElementById('round-score-list');
+function showSoloResults() {
+  document.getElementById('soloResultsScore').textContent = solo.sessionLength + '問中 ' + solo.correct + '問正解';
+  var list = document.getElementById('soloReviewList');
   list.innerHTML = '';
-  sorted.forEach((p, i) => {
-    const div = document.createElement('div');
-    div.className = 'score-row';
-    const rankClass = i === 0 ? 'first' : i === 1 ? 'second' : '';
-    div.innerHTML = `
-      <div class="score-rank ${rankClass}">${i + 1}</div>
-      <div class="score-name">${escapeHtml(p.name)}</div>
-      <div class="score-pts">${p.score}<span>点</span></div>`;
-    list.appendChild(div);
-  });
+  solo.history.forEach(function (entry, idx) {
+    var item = document.createElement('div');
+    item.className = 'review-item ' + (entry.correct ? 'correct' : 'wrong');
+    var headerEl = document.createElement('div');
+    headerEl.className = 'review-item-header';
+    headerEl.innerHTML =
+      '<span class="review-q-num">問題' + (idx + 1) + '</span>' +
+      '<span class="review-word">' + escapeHtml(entry.word) + '</span>' +
+      '<span class="review-result-icon">' + (entry.correct ? '○' : '×') + '</span>';
+    item.appendChild(headerEl);
 
-  // Host/player next button
-  const isLastRound = currentRound + 1 >= room.questionCount;
-  document.getElementById('host-next-btn').style.display = isHost ? 'block' : 'none';
-  document.getElementById('player-waiting-next').style.display = isHost ? 'none' : 'block';
-  if (isHost) {
-    const btn = document.querySelector('#host-next-btn button');
-    btn.textContent = isLastRound ? '最終結果を見る' : '次の問題へ';
-  }
+    if (entry.mode === 'reading') {
+      if (!entry.correct) {
+        var tc = document.createElement('div');
+        tc.className = 'review-text-compare';
+        tc.textContent = '回答: 「' + (entry.characters[0].userAnswer || '（空欄）') + '」　正解: 「' + entry.word + '」';
+        item.appendChild(tc);
+      }
+    } else {
+      var charsEl = document.createElement('div');
+      charsEl.className = 'review-chars';
+      entry.characters.forEach(function (ch) {
+        var charEl = document.createElement('div');
+        charEl.className = 'review-char ' + (ch.correct ? 'correct' : 'wrong');
+        var label = document.createElement('div');
+        label.className = 'review-char-label';
+        label.textContent = ch.label;
+        charEl.appendChild(label);
+        if (ch.correct) {
+          var okLabel = document.createElement('div');
+          okLabel.className = 'review-compare-label';
+          okLabel.textContent = '回答';
+          charEl.appendChild(okLabel);
+          charEl.appendChild(buildMiniCellGroup(ch.correctDots, 'correct'));
+        } else {
+          var compareEl = document.createElement('div');
+          compareEl.className = 'review-compare';
+          var userCol = document.createElement('div');
+          userCol.className = 'review-compare-col';
+          userCol.innerHTML = '<div class="review-compare-label">回答</div>';
+          userCol.appendChild(buildMiniCellGroup(ch.userDots, 'wrong'));
+          var correctCol = document.createElement('div');
+          correctCol.className = 'review-compare-col';
+          correctCol.innerHTML = '<div class="review-compare-label">正解</div>';
+          correctCol.appendChild(buildMiniCellGroup(ch.correctDots, 'correct'));
+          compareEl.appendChild(userCol); compareEl.appendChild(correctCol);
+          charEl.appendChild(compareEl);
+        }
+        charsEl.appendChild(charEl);
+      });
+      item.appendChild(charsEl);
+    }
+    list.appendChild(item);
+  });
+  showScreen('screen-solo-results');
 }
 
+window.retrySoloQuiz = function () { startSoloQuiz(solo.mode); };
+
+document.querySelectorAll('#screen-top [data-solo-mode]').forEach(function (btn) {
+  btn.addEventListener('click', function () { startSoloQuiz(btn.dataset.soloMode); });
+});
+
+window.addEventListener('resize', function () {
+  if (document.getElementById('screen-solo-quiz').classList.contains('active')) soloEngine.refit();
+  if (document.getElementById('screen-game').classList.contains('active') && mpEngine) mpEngine.refit();
+});
+
 // ════════════════════════════════
-//  NEXT ROUND (Host)
+//  ONLINE MULTIPLAYER MODE
+//  重要: ホスト/ゲストの区別を使うのは「ロビーの開始ボタンを誰に見せるか」と
+//  「ラウンド進行（次の問題へ/タイムアップ時のreveal遷移）を誰が叩けるか」の
+//  2か所だけ。点字タップ入力・回答送信・自己採点・スコア反映は全員が
+//  全く同じコード経路（mpEngine / writeMyAnswer）を通るので、
+//  「ホストは回答できたがゲストはできない」という構造のバグが再発しない。
 // ════════════════════════════════
-window.nextRound = async () => {
-  const nextIdx = currentRound + 1;
-  if (nextIdx >= currentQuestions.length) {
-    await update(ref(db, `rooms/${roomId}`), { status: 'finished' });
-  } else {
-    await startRound(nextIdx);
+var MIN_POINTS = 500, MAX_POINTS = 1000;
+var DEFAULT_QUESTION_DURATION_MS = 20000;
+
+var mp = {
+  myId: null, myName: '', roomId: '', isHost: false,
+  mode: 'word', questionDurationMs: DEFAULT_QUESTION_DURATION_MS, questions: [],
+  currentQuestionIndex: -1, questionStartedAtMs: 0, revealedForIndex: null,
+  answeredThisQuestion: false, playersCache: {}, currentAnswersCache: {},
+  answersPath: null, timerHandle: null
+};
+
+var mpDom = buildAnswerEngineDom(document.getElementById('mpAnswerMount'));
+mpDom.feedbackEl = document.getElementById('mpFeedback');
+var mpEngine = createAnswerEngine(mpDom);
+
+function poolForOnlineMode(mode) {
+  if (mode === 'sentence') return SENTENCES;
+  if (mode === 'number') return NUMBERS;
+  return WORDS;
+}
+function genRoomCode() { return String(Math.floor(100000 + Math.random() * 900000)); }
+async function uniqueRoomCode() {
+  var code;
+  do { code = genRoomCode(); } while ((await get(ref(db, 'rooms/' + code))).exists());
+  return code;
+}
+
+var selectedOnlineMode = 'word';
+document.querySelectorAll('#create-mode-buttons [data-online-mode]').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    selectedOnlineMode = btn.dataset.onlineMode;
+    document.querySelectorAll('#create-mode-buttons [data-online-mode]').forEach(function (b) {
+      b.className = 'btn btn-sm ' + (b === btn ? 'btn-primary' : 'btn-secondary');
+    });
+  });
+});
+var selectedQCount = 10;
+document.querySelectorAll('#create-qcount-buttons [data-qcount]').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    selectedQCount = parseInt(btn.dataset.qcount, 10);
+    document.querySelectorAll('#create-qcount-buttons [data-qcount]').forEach(function (b) {
+      b.className = 'btn btn-sm ' + (b === btn ? 'btn-primary' : 'btn-secondary');
+    });
+  });
+});
+
+// ── ルーム作成・参加 ──
+window.createRoom = async function () {
+  if (!isConfigured) { alert('Firebase の設定が必要です。HTMLファイルの firebaseConfig を確認してください。'); return; }
+  var name = document.getElementById('host-name').value.trim();
+  if (!name) { alert('名前を入力してください'); return; }
+  try {
+    await authReady;
+    var roomId = await uniqueRoomCode();
+    mp.myName = name; mp.myId = myId; mp.isHost = true; mp.roomId = roomId;
+
+    var pool = poolForOnlineMode(selectedOnlineMode);
+    var qWords = shuffle(pool).slice(0, selectedQCount);
+    var pw = document.getElementById('create-password').value.trim();
+    var passwordHash = await hashPassword(pw, roomId);
+
+    await set(ref(db, 'rooms/' + roomId), {
+      hostUid: myId,
+      mode: selectedOnlineMode,
+      passwordHash: passwordHash,
+      questionDurationMs: DEFAULT_QUESTION_DURATION_MS,
+      status: 'lobby',
+      currentQuestionIndex: -1,
+      questions: qWords,
+      createdAt: serverTimestamp()
+    });
+    await set(ref(db, 'rooms/' + roomId + '/players/' + myId), {
+      name: name, isHost: true, score: 0, joinedAt: serverTimestamp()
+    });
+
+    document.getElementById('display-room-code').textContent = roomId;
+    attachRoomListeners();
+    showScreen('screen-lobby-host');
+  } catch (err) {
+    console.error('ルーム作成に失敗しました', err);
+    alert('ルームを作成できませんでした。Firebaseのセキュリティルールが正しく設定されているか確認してください。');
   }
 };
 
-// ════════════════════════════════
-//  FINAL SCREEN
-// ════════════════════════════════
-async function renderFinalScreen(room) {
-  clearInterval(timerInterval);
-  showScreen('screen-final');
+window.joinRoom = async function () {
+  if (!isConfigured) { alert('Firebase の設定が必要です。HTMLファイルの firebaseConfig を確認してください。'); return; }
+  var name = document.getElementById('player-name').value.trim();
+  var code = document.getElementById('room-code-input').value.trim();
+  var pw = document.getElementById('join-password').value.trim();
+  if (!name) { alert('名前を入力してください'); return; }
+  if (code.length !== 6) { alert('6桁のコードを入力してください'); return; }
+  try {
+    await authReady;
 
-  const snap = await get(ref(db, `rooms/${roomId}/players`));
-  const players = snap.val() || {};
-  const sorted = Object.values(players).sort((a, b) => b.score - a.score);
+    var snap = await get(ref(db, 'rooms/' + code));
+    if (!snap.exists()) { alert('ルームが見つかりません'); return; }
+    var room = snap.val();
+    if (room.status !== 'lobby') { alert('このルームはすでに開始しています'); return; }
+    var hash = await hashPassword(pw, code);
+    if ((room.passwordHash || '') !== hash) { alert('パスワードが違います'); return; }
 
-  document.getElementById('final-winner-name').textContent = (sorted[0]?.name || '—') + ' さん';
+    mp.myName = name; mp.myId = myId; mp.roomId = code; mp.isHost = false;
+    await set(ref(db, 'rooms/' + code + '/players/' + myId), {
+      name: name, isHost: false, score: 0, joinedAt: serverTimestamp()
+    });
 
-  const list = document.getElementById('final-score-list');
+    document.getElementById('lobby-room-info').textContent = 'ルームコード: ' + code;
+    attachRoomListeners();
+    showScreen('screen-lobby-player');
+  } catch (err) {
+    console.error('ルーム参加に失敗しました', err);
+    alert('ルームに参加できませんでした。Firebaseのセキュリティルールが正しく設定されているか確認してください。');
+  }
+};
+
+window.startGame = async function () {
+  try {
+    await update(ref(db, 'rooms/' + mp.roomId), {
+      status: 'in_question', currentQuestionIndex: 0, questionStartedAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.error('ゲーム開始に失敗しました', err);
+    alert('ゲームを開始できませんでした。Firebaseのセキュリティルールが正しく設定されているか確認してください。');
+  }
+};
+
+window.nextRound = async function () {
+  try {
+    var nextIdx = mp.currentQuestionIndex + 1;
+    if (nextIdx >= mp.questions.length) {
+      await update(ref(db, 'rooms/' + mp.roomId), { status: 'finished' });
+    } else {
+      await update(ref(db, 'rooms/' + mp.roomId), {
+        status: 'in_question', currentQuestionIndex: nextIdx, questionStartedAt: serverTimestamp()
+      });
+    }
+  } catch (err) {
+    console.error('次の問題への進行に失敗しました', err);
+    alert('次の問題に進めませんでした。通信状況を確認してください。');
+  }
+};
+
+// ── 共通リスナー（host/guestで分岐しない: 全員が同じイベントで画面遷移する） ──
+function renderPlayerList(containerId, players) {
+  var list = document.getElementById(containerId);
+  if (!list) return;
   list.innerHTML = '';
-  sorted.forEach((p, i) => {
-    const div = document.createElement('div');
-    div.className = 'score-row';
-    const medals = ['🥇','🥈','🥉'];
-    div.innerHTML = `
-      <div class="score-rank ${i === 0 ? 'first' : ''}" style="font-size:22px">${medals[i] || (i+1)}</div>
-      <div class="score-name">${escapeHtml(p.name)}</div>
-      <div class="score-pts">${p.score}<span>点</span></div>`;
+  Object.keys(players).map(function (uid) {
+    var p = players[uid]; return { uid: uid, name: p.name, isHost: p.isHost, score: p.score || 0, joinedAt: p.joinedAt || 0 };
+  }).sort(function (a, b) { return a.joinedAt - b.joinedAt; }).forEach(function (p) {
+    var div = document.createElement('div');
+    div.className = 'player-item';
+    div.innerHTML =
+      '<div class="player-dot"></div><span class="player-name">' + escapeHtml(p.name) + '</span>' +
+      (p.isHost ? '<span class="player-host-badge">ホスト</span>' : '') +
+      '<span class="player-score">' + p.score + '点</span>';
     list.appendChild(div);
   });
+}
+
+function attachRoomListeners() {
+  onValue(ref(db, 'rooms/' + mp.roomId + '/players'), function (snap) {
+    mp.playersCache = snap.val() || {};
+    renderPlayerList('host-player-list', mp.playersCache);
+    renderPlayerList('player-player-list', mp.playersCache);
+  });
+
+  onValue(ref(db, 'rooms/' + mp.roomId), function (snap) {
+    var room = snap.val();
+    if (!room) return;
+    mp.mode = room.mode;
+    mp.questionDurationMs = room.questionDurationMs || DEFAULT_QUESTION_DURATION_MS;
+    mp.questions = room.questions || [];
+
+    if (room.status === 'in_question' && mp.currentQuestionIndex !== room.currentQuestionIndex) {
+      mp.currentQuestionIndex = room.currentQuestionIndex;
+      mp.questionStartedAtMs = room.questionStartedAt;
+      enterQuestion();
+    } else if (room.status === 'reveal' && mp.revealedForIndex !== room.currentQuestionIndex) {
+      mp.revealedForIndex = room.currentQuestionIndex;
+      enterReveal();
+    } else if (room.status === 'finished') {
+      enterFinal();
+    }
+  });
+}
+
+// ── 問題画面 ──
+function enterQuestion() {
+  stopTimer();
+  showScreen('screen-game');
+  mp.answeredThisQuestion = false;
+  mpDom.mountEl.classList.remove('hidden');
+  document.getElementById('mp-waiting').classList.add('hidden');
+  document.getElementById('mpFeedback').textContent = '';
+  document.getElementById('round-label').textContent = '問題 ' + (mp.currentQuestionIndex + 1) + ' / ' + mp.questions.length;
+  var myScore = (mp.playersCache[mp.myId] && mp.playersCache[mp.myId].score) || 0;
+  document.getElementById('my-score-label').textContent = myScore + '点';
+
+  var word = mp.questions[mp.currentQuestionIndex];
+  mpEngine.load(mp.mode === 'number' ? 'number' : mp.mode, word, {
+    finishLabel: function () { return '回答を送信'; },
+    onCorrectFeedback: function () {},
+    onFinish: function (allCorrect) { submitOnlineAnswer(allCorrect); }
+  });
+
+  attachAnswersListener();
+  startTimer();
+}
+
+function startTimer() {
+  var fill = document.getElementById('timer-fill');
+  function tick() {
+    var elapsed = estimatedServerNow() - mp.questionStartedAtMs;
+    var remain = mp.questionDurationMs - elapsed;
+    var pct = Math.max(0, Math.min(100, (remain / mp.questionDurationMs) * 100));
+    fill.style.width = pct + '%';
+    fill.style.background = pct < 30
+      ? 'linear-gradient(90deg, var(--red), var(--yellow))'
+      : 'linear-gradient(90deg, var(--green), var(--blue))';
+    if (remain <= 0) { onTimerExpired(); return; }
+    mp.timerHandle = requestAnimationFrame(tick);
+  }
+  tick();
+}
+function stopTimer() {
+  if (mp.timerHandle) cancelAnimationFrame(mp.timerHandle);
+  mp.timerHandle = null;
+}
+
+function onTimerExpired() {
+  stopTimer();
+  if (!mp.answeredThisQuestion) writeMyAnswer(false, 0);
+  // ラウンド終了の遷移はホストだけが行う（進行管理は正当なホスト専用操作。
+  // 回答の入力・採点・加点は上のwriteMyAnswerで全員が自分自身に対して行っている）。
+  if (mp.isHost) {
+    update(ref(db, 'rooms/' + mp.roomId), { status: 'reveal' }).catch(function () {});
+  }
+}
+
+function computePoints(elapsedMs, durationMs) {
+  var remainFrac = Math.max(0, Math.min(1, (durationMs - elapsedMs) / durationMs));
+  return Math.round(MIN_POINTS + (MAX_POINTS - MIN_POINTS) * remainFrac);
+}
+
+function writeMyAnswer(isCorrect, points) {
+  mp.answeredThisQuestion = true;
+  return set(ref(db, 'rooms/' + mp.roomId + '/questionsProgress/' + mp.currentQuestionIndex + '/answers/' + mp.myId), {
+    uid: mp.myId, name: mp.myName, isCorrect: isCorrect, pointsAwarded: points, answeredAt: serverTimestamp()
+  }).then(function () {
+    if (points > 0) {
+      var newScore = ((mp.playersCache[mp.myId] && mp.playersCache[mp.myId].score) || 0) + points;
+      return update(ref(db, 'rooms/' + mp.roomId + '/players/' + mp.myId), { score: newScore });
+    }
+  }).catch(function (err) {
+    console.error('回答の送信に失敗しました', err);
+    alert('回答の送信に失敗しました。通信状況を確認してください。');
+  });
+}
+
+function submitOnlineAnswer(allCorrect) {
+  var elapsed = estimatedServerNow() - mp.questionStartedAtMs;
+  var points = allCorrect ? computePoints(elapsed, mp.questionDurationMs) : 0;
+  mpDom.mountEl.classList.add('hidden');
+  document.getElementById('mpFeedback').textContent = '';
+  document.getElementById('mp-waiting').classList.remove('hidden');
+  document.getElementById('mp-waiting-title').textContent = allCorrect ? ('正解！ +' + points + '点') : '不正解（回答送信済み）';
+  showFeedbackPill(allCorrect ? ('正解！ +' + points + '点') : '不正解', allCorrect ? 'correct' : 'wrong');
+  writeMyAnswer(allCorrect, points);
+}
+
+// ── タイマーバー上のライブマーカー（誰がいつ回答したか。正解中は色を出さず、
+//    revealになった瞬間だけ正解/不正解の色に変える） ──
+function attachAnswersListener() {
+  detachAnswersListener();
+  mp.answersPath = 'rooms/' + mp.roomId + '/questionsProgress/' + mp.currentQuestionIndex + '/answers';
+  mp.currentAnswersCache = {};
+  document.getElementById('timer-markers').innerHTML = '';
+  onValue(ref(db, mp.answersPath), function (snap) {
+    mp.currentAnswersCache = snap.val() || {};
+    renderMarkers(false);
+  });
+}
+function detachAnswersListener() {
+  if (mp.answersPath) { off(ref(db, mp.answersPath)); mp.answersPath = null; }
+}
+function renderMarkers(revealed) {
+  var container = document.getElementById('timer-markers');
+  Object.keys(mp.currentAnswersCache).forEach(function (uid) {
+    var ans = mp.currentAnswersCache[uid];
+    if (!ans || typeof ans.answeredAt !== 'number') return;
+    var pct = Math.max(0, Math.min(1, (ans.answeredAt - mp.questionStartedAtMs) / mp.questionDurationMs)) * 100;
+    var chip = container.querySelector('[data-uid="' + uid + '"]');
+    if (!chip) {
+      chip = document.createElement('div');
+      chip.className = 'timer-marker';
+      chip.dataset.uid = uid;
+      chip.title = ans.name;
+      chip.textContent = (ans.name || '?').slice(0, 1);
+      container.appendChild(chip);
+    }
+    chip.style.left = pct + '%';
+    chip.classList.toggle('correct', !!(revealed && ans.isCorrect));
+    chip.classList.toggle('wrong', !!(revealed && !ans.isCorrect));
+  });
+}
+
+// ── ラウンド結果 ──
+function renderTotalLeaderboard(containerId) {
+  var sorted = Object.keys(mp.playersCache).map(function (uid) {
+    var p = mp.playersCache[uid]; return { uid: uid, name: p.name, score: p.score || 0 };
+  }).sort(function (a, b) { return b.score - a.score; });
+  var list = document.getElementById(containerId);
+  list.innerHTML = '';
+  sorted.forEach(function (p, i) {
+    var div = document.createElement('div');
+    div.className = 'score-row';
+    div.innerHTML =
+      '<div class="score-rank ' + (i === 0 ? 'first' : i === 1 ? 'second' : '') + '">' + (i + 1) + '</div>' +
+      '<div class="score-name">' + escapeHtml(p.name) + '</div>' +
+      '<div class="score-pts">' + p.score + '<span>点</span></div>';
+    list.appendChild(div);
+  });
+  return sorted;
+}
+
+function enterReveal() {
+  stopTimer();
+  showScreen('screen-round-result');
+  var idx = mp.revealedForIndex;
+  var word = mp.questions[idx];
+  document.getElementById('result-answer').textContent = word;
+  renderMarkers(true);
+
+  var rows = Object.keys(mp.currentAnswersCache).map(function (uid) {
+    var a = mp.currentAnswersCache[uid];
+    return { uid: uid, name: a.name, points: a.pointsAwarded || 0 };
+  });
+  Object.keys(mp.playersCache).forEach(function (uid) {
+    if (!rows.some(function (r) { return r.uid === uid; })) {
+      rows.push({ uid: uid, name: mp.playersCache[uid].name, points: 0 });
+    }
+  });
+  rows.sort(function (a, b) { return b.points - a.points; });
+  var roundList = document.getElementById('round-score-list');
+  roundList.innerHTML = '';
+  rows.forEach(function (r, i) {
+    var div = document.createElement('div');
+    div.className = 'score-row';
+    div.innerHTML =
+      '<div class="score-rank ' + (i === 0 ? 'first' : i === 1 ? 'second' : '') + '">' + (i + 1) + '</div>' +
+      '<div class="score-name">' + escapeHtml(r.name) + '</div>' +
+      '<div class="score-delta ' + (r.points > 0 ? 'gain' : 'zero') + '">' + (r.points > 0 ? ('+' + r.points) : '×') + '</div>';
+    roundList.appendChild(div);
+  });
+  if (rows.some(function (r) { return r.uid === mp.myId && r.points > 0; })) launchConfetti();
+
+  renderTotalLeaderboard('round-total-list');
+
+  var isLastRound = idx + 1 >= mp.questions.length;
+  document.getElementById('host-next-btn').style.display = mp.isHost ? 'block' : 'none';
+  document.getElementById('player-waiting-next').style.display = mp.isHost ? 'none' : 'block';
+  if (mp.isHost) {
+    document.querySelector('#host-next-btn button').textContent = isLastRound ? '最終結果を見る' : '次の問題へ';
+  }
+}
+
+function enterFinal() {
+  stopTimer();
+  detachAnswersListener();
+  showScreen('screen-final');
+  var sorted = renderTotalLeaderboard('final-score-list');
+  document.getElementById('final-winner-name').textContent = (sorted[0] ? sorted[0].name : '—') + ' さん';
+  var list = document.getElementById('final-score-list');
+  list.innerHTML = '';
+  var medals = ['🥇', '🥈', '🥉'];
+  sorted.forEach(function (p, i) {
+    var div = document.createElement('div');
+    div.className = 'score-row';
+    div.innerHTML =
+      '<div class="score-rank ' + (i === 0 ? 'first' : '') + '" style="font-size:22px">' + (medals[i] || (i + 1)) + '</div>' +
+      '<div class="score-name">' + escapeHtml(p.name) + '</div>' +
+      '<div class="score-pts">' + p.score + '<span>点</span></div>';
+    list.appendChild(div);
+  });
+  if (sorted[0] && sorted[0].uid === mp.myId) launchConfetti();
 }
 
 // ════════════════════════════════
 //  INIT
 // ════════════════════════════════
-window.setQCount(10); // default
-animateTitleBraille();
-
+(function renderTitleBraille() {
+  var container = document.getElementById('title-braille');
+  container.innerHTML = '';
+  wordToGroups('てんじ').forEach(function (group) {
+    group.forEach(function (dots) {
+      var cell = document.createElement('div');
+      cell.className = 'title-cell';
+      DOT_ORDER.forEach(function (pos) {
+        var d = document.createElement('div');
+        d.className = 'title-dot' + (dots.indexOf(pos) !== -1 ? ' on' : '');
+        cell.appendChild(d);
+      });
+      container.appendChild(cell);
+    });
+  });
+})();
 </script>
 </body>
 </html>
