@@ -1243,8 +1243,11 @@ function createAnswerEngine(dom) {
     updateActionBtnLabel();
 
     // オンライン対戦では「回答送信」ボタンを出さず、最後の文字（または読みモードの
-    // 答え合わせ）が終わったら数秒後に自動で送信する。
+    // 答え合わせ）が終わったら数秒後に自動で送信する。タイマーバー上のマーカーや
+    // スピードボーナスの計算は、この数秒の表示待ち時間を含めず「実際に解き終わった
+    // 瞬間」を使うため、ここで時刻を記録しておく。
     if (isOnLastStep() && hooks.autoFinishDelayMs != null) {
+      state.completedAtMs = (hooks.now || Date.now)();
       dom.checkBtn.classList.add("hidden");
       state.autoFinishTimer = window.setTimeout(finishCurrentWord, hooks.autoFinishDelayMs);
     }
@@ -1259,10 +1262,30 @@ function createAnswerEngine(dom) {
       var result = captureCurrentGroupResult(state.activeGroupIndex);
       state.characters.push(result);
       var anyWrong = state.wordHasMistake || !result.correct;
-      hooks.onFinish(!anyWrong, state.characters);
+      hooks.onFinish(!anyWrong, state.characters, state.completedAtMs);
     } else {
-      hooks.onFinish(state.readingResult.correct, [{ label: state.currentWord, correct: state.readingResult.correct, userAnswer: state.readingResult.userAnswer }]);
+      hooks.onFinish(state.readingResult.correct, [{ label: state.currentWord, correct: state.readingResult.correct, userAnswer: state.readingResult.userAnswer }], state.completedAtMs);
     }
+  }
+
+  // 制限時間が切れた時点で、まだ送信していないプレイヤーの「ここまでの進み具合」を
+  // 取り出す（最後の文字まで解き切れていなくても、それまでに正解した文字の分は
+  // 得点になるようにするため）。自動送信タイマーが残っていれば、二重送信を防ぐために
+  // ここで止める。
+  function getProgressSnapshot() {
+    if (!state) return { characters: [], totalCount: 1, completedAtMs: null };
+    if (state.autoFinishTimer) { clearTimeout(state.autoFinishTimer); state.autoFinishTimer = null; }
+    if (state.currentMode === "reading") {
+      if (state.checked && state.readingResult) {
+        return { characters: [{ label: state.currentWord, correct: state.readingResult.correct }], totalCount: 1, completedAtMs: state.completedAtMs || null };
+      }
+      return { characters: [], totalCount: 1, completedAtMs: null };
+    }
+    var chars = state.characters.slice();
+    if (state.checked && chars.length <= state.activeGroupIndex) {
+      chars.push(captureCurrentGroupResult(state.activeGroupIndex));
+    }
+    return { characters: chars, totalCount: state.correctGroups.length, completedAtMs: state.completedAtMs || null };
   }
 
   function advanceToNextGroup() {
@@ -1306,7 +1329,8 @@ function createAnswerEngine(dom) {
       characters: [],
       userCells: [],
       readingResult: null,
-      autoFinishTimer: null
+      autoFinishTimer: null,
+      completedAtMs: null
     };
     dom.checkBtn.classList.remove("hidden");
     dom.feedbackEl.textContent = "";
@@ -1356,7 +1380,7 @@ function createAnswerEngine(dom) {
     handleAdvanceOrCheck();
   });
 
-  return { load: load, refit: refit, mountEl: dom.mountEl };
+  return { load: load, refit: refit, mountEl: dom.mountEl, getProgressSnapshot: getProgressSnapshot };
 }
 
 // ════════════════════════════════
@@ -1730,7 +1754,8 @@ function enterQuestion() {
     finishLabel: function () { return '回答を送信'; },
     onCorrectFeedback: function () {},
     autoFinishDelayMs: MP_AUTO_FINISH_DELAY_MS,
-    onFinish: function (allCorrect, characters) { submitOnlineAnswer(allCorrect, characters); }
+    now: estimatedServerNow,
+    onFinish: function (allCorrect, characters, completedAtMs) { submitOnlineAnswer(characters, completedAtMs); }
   });
 
   attachAnswersListener();
@@ -1765,9 +1790,14 @@ function triggerReveal() {
 
 function onTimerExpired() {
   stopTimer();
-  if (!mp.answeredThisQuestion) writeMyAnswer(false, 0, 0, 0);
+  // 最後の文字まで解き切れていなくても、タイムアップまでに正解していた文字の分だけ
+  // 部分点になるようにする（途中までしか解いていないと0点になっていた不具合の修正）。
+  if (!mp.answeredThisQuestion) {
+    var progress = mpEngine.getProgressSnapshot();
+    finalizeAndSubmitAnswer(progress.characters, progress.totalCount, progress.completedAtMs);
+  }
   // ラウンド終了の遷移はホストだけが行う（進行管理は正当なホスト専用操作。
-  // 回答の入力・採点・加点は上のwriteMyAnswerで全員が自分自身に対して行っている）。
+  // 回答の入力・採点・加点は上のfinalizeAndSubmitAnswerで全員が自分自身に対して行っている）。
   if (mp.isHost) triggerReveal();
 }
 
@@ -1789,11 +1819,11 @@ function computePoints(elapsedMs, durationMs) {
 // まだ自分のリスナーに届く前に次の加算が走ると上書きされてスコアが消えることがある
 // （「全問正解しても点数が反映されない」不具合の原因）。トランザクションならサーバー
 // 側の最新値を基準に加算されるので、この競合が起きない。
-function writeMyAnswer(isCorrect, points, correctCount, totalCount) {
+function writeMyAnswer(isCorrect, points, correctCount, totalCount, answeredAtMs) {
   mp.answeredThisQuestion = true;
   return set(ref(db, 'rooms/' + mp.roomId + '/questionsProgress/' + mp.currentQuestionIndex + '/answers/' + mp.myId), {
     uid: mp.myId, name: mp.myName, isCorrect: isCorrect, pointsAwarded: points,
-    correctCount: correctCount, totalCount: totalCount, answeredAt: serverTimestamp()
+    correctCount: correctCount, totalCount: totalCount, answeredAt: answeredAtMs
   }).then(function () {
     if (points > 0) {
       return runTransaction(ref(db, 'rooms/' + mp.roomId + '/players/' + mp.myId + '/score'), function (current) {
@@ -1809,19 +1839,28 @@ function writeMyAnswer(isCorrect, points, correctCount, totalCount) {
 // 単語/文章/数字モードは1文字ごとに正解した分だけ得点が入る（速さボーナスは単語
 // 全体の完答スピードで決まる満点に、正解した文字の割合をかけたもの）。読みモードは
 // 文字単位の判定がないので1文字相当（全部正解/不正解）として扱われる。
-function submitOnlineAnswer(allCorrect, characters) {
-  var elapsed = estimatedServerNow() - mp.questionStartedAtMs;
-  var totalCount = (characters && characters.length) || 1;
-  var correctCount = characters ? characters.filter(function (c) { return c.correct; }).length : (allCorrect ? 1 : 0);
+// completedAtMs が渡されればそれを「実際に解き終わった瞬間」として使う（回答送信の
+// 数秒の自動送信待ちの分はスピードボーナスやタイマーバーのマーカー位置に含めない）。
+// 渡されない場合（タイムアップ時など）はその時点の時刻を使う。
+function finalizeAndSubmitAnswer(characters, totalCount, completedAtMs) {
+  var nowMs = completedAtMs || estimatedServerNow();
+  var elapsed = nowMs - mp.questionStartedAtMs;
+  var correctCount = characters.filter(function (c) { return c.correct; }).length;
+  var allCorrect = totalCount > 0 && correctCount === totalCount;
   var fullPoints = computePoints(elapsed, mp.questionDurationMs);
-  var points = Math.round(fullPoints * correctCount / totalCount);
+  var points = totalCount > 0 ? Math.round(fullPoints * correctCount / totalCount) : 0;
   mpDom.mountEl.classList.add('hidden');
   document.getElementById('mpFeedback').textContent = '';
   document.getElementById('mp-waiting').classList.remove('hidden');
   var sub = totalCount > 1 ? '（' + correctCount + '/' + totalCount + '文字正解）' : '';
   document.getElementById('mp-waiting-title').textContent = points > 0 ? ('+' + points + '点' + sub) : ('不正解' + sub);
   showFeedbackPill(points > 0 ? ('+' + points + '点') : '不正解', points > 0 ? 'correct' : 'wrong');
-  writeMyAnswer(allCorrect, points, correctCount, totalCount);
+  writeMyAnswer(allCorrect, points, correctCount, totalCount, nowMs);
+}
+
+function submitOnlineAnswer(characters, completedAtMs) {
+  var totalCount = (characters && characters.length) || 1;
+  finalizeAndSubmitAnswer(characters || [], totalCount, completedAtMs);
 }
 
 // ── タイマーバー上のライブマーカー（誰がいつ回答したか。回答中は色を出さず、
