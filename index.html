@@ -1570,13 +1570,14 @@ window.createRoom = async function () {
   try {
     await authReady;
     var existing = await get(ref(db, 'rooms/' + roomId));
-    // 終了済み、または作成から長時間経って放置されたルームはコードを再利用できるようにする
-    // （一度使ったコードがずっと使えなくなる不具合を防ぐ）。set()で新しいルームに丸ごと
-    // 置き換えるので、古いplayers/questionsProgressも一緒に消える。
+    // ゲームがスタートした（ロビーを抜けた）ルームはもう新しい参加者を募集していないので、
+    // 終了を待たずにそのコードを再利用できるようにする。ロビーで止まっている場合だけ
+    // 「使用中」として拒否し、長時間放置されたロビーは古いものとして再利用を許可する。
+    // set()で新しいルームに丸ごと置き換えるので、古いplayers/questionsProgressも一緒に消える。
     if (existing.exists()) {
       var oldRoom = existing.val();
       var ageMs = Date.now() - (oldRoom.createdAt || 0);
-      var isReusable = oldRoom.status === 'finished' || ageMs > STALE_ROOM_MS;
+      var isReusable = oldRoom.status !== 'lobby' || ageMs > STALE_ROOM_MS;
       if (!isReusable) { alert('そのルームコードは使用中です。別のコードを入力してください。'); return; }
     }
     mp.myName = name; mp.myId = myId; mp.isHost = true; mp.roomId = roomId;

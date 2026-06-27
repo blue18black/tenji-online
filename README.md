@@ -45,7 +45,7 @@ Realtime Database → ルール タブに、以下を貼り付けて公開して
           "$qIndex": {
             "answers": {
               "$uid": {
-                ".write": "auth != null && auth.uid === $uid && root.child('rooms/'+$roomCode+'/currentQuestionIndex').val() === $qIndex",
+                ".write": "auth != null && auth.uid === $uid",
                 ".validate": "newData.child('uid').val() === auth.uid"
               }
             }
@@ -56,6 +56,8 @@ Realtime Database → ルール タブに、以下を貼り付けて公開して
   }
 }
 ```
+
+**既存のプロジェクトをお使いの場合は、上記の最新版に貼り替えてください。** 以前のバージョンには `root.child(...).val() === $qIndex` という、ルームの現在の問題番号（数値）とURLのパス部分から取れる `$qIndex`（文字列）を比較する条件が入っていましたが、Realtime Databaseのルール内ではこの2つの型が一致せず、ホスト以外（ゲスト）の回答の書き込みが常に`permission_denied`で失敗していました。ホストは別の経路（ルーム本体への書き込み権限）でたまたま許可されていたため、ホストだけ正常に動いて見えていました。
 
 このルールの考え方:
 
