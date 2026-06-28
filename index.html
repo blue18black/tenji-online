@@ -113,8 +113,15 @@
   .btn-secondary { background: var(--card); color: var(--ink); border: 2px solid #ddd2f7; box-shadow: 0 6px 0 #ddd2f7; }
   .btn-accent { background: var(--blue); color: #fff; }
   .btn-hit { background: var(--green); color: #fff; }
+  .btn-danger { background: #fff; color: var(--red); border: 2px solid var(--red); box-shadow: 0 6px 0 #f6c6cd; }
   .btn-sm { padding: 10px 14px; font-size: 13px; box-shadow: 0 4px 0 rgba(0,0,0,0.18); width: auto; }
   .btn-stack { display: flex; flex-direction: column; gap: 10px; }
+  .kick-btn {
+    margin-left: 6px; background: #fff; color: var(--red); border: 1px solid var(--red);
+    border-radius: 999px; font-size: 11px; font-weight: 700; padding: 4px 10px; cursor: pointer;
+    flex-shrink: 0;
+  }
+  .kick-btn:active { transform: translateY(1px); }
 
   .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 4px 0 18px; }
   .mode-btn {
@@ -497,6 +504,7 @@
 
   <div class="btn-stack" style="margin-top:8px">
     <button class="btn btn-accent" id="start-btn" onclick="startGame()">ゲームスタート</button>
+    <button class="btn btn-danger btn-sm" style="width:100%" onclick="deleteRoom()">部屋を削除</button>
   </div>
   </div>
 </div>
@@ -517,6 +525,10 @@
 
   <div class="section-head">参加者</div>
   <div id="player-player-list" class="player-list"></div>
+
+  <div class="spacer" style="min-height:20px"></div>
+
+  <button class="btn btn-danger btn-sm" style="width:100%" onclick="leaveRoom()">退場する</button>
   </div>
 </div>
 
@@ -628,7 +640,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getDatabase, ref, set, get, onValue, off, update, serverTimestamp, runTransaction }
+import { getDatabase, ref, set, get, onValue, off, update, remove, onDisconnect, serverTimestamp, runTransaction }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1540,6 +1552,7 @@ var REVEAL_COUNTDOWN_MS = 6000;
 var STALE_ROOM_MS = 6 * 60 * 60 * 1000; // 6時間: これより古い未終了ルームもコードを再利用可能にする
 var MP_AUTO_FINISH_DELAY_MS = 1800;
 var DEFAULT_QUESTION_COUNT = 10;
+var LOBBY_IDLE_TIMEOUT_MS = 90 * 1000; // ロビーでゲーム開始されないまま90秒経過したら自動解散
 var ONLINE_MODE_LABELS = { word: '単語', sentence: '文章', number: '数字', reading: '読み' };
 
 var mp = {
@@ -1549,7 +1562,9 @@ var mp = {
   currentQuestionIndex: -1, questionStartedAtMs: 0, revealedForIndex: null,
   startingEntered: false, finishedEntered: false, revealTriggered: false,
   answeredThisQuestion: false, playersCache: {}, currentAnswersCache: {},
-  answersPath: null, timerHandle: null, phaseStartedAtMs: 0
+  answersPath: null, playersListenerPath: null, roomListenerPath: null,
+  timerHandle: null, phaseStartedAtMs: 0, lobbyDissolveTimer: null,
+  leavingVoluntarily: false, beingRemoved: false
 };
 
 var mpDom = buildAnswerEngineDom(document.getElementById('mpAnswerMount'));
@@ -1613,7 +1628,7 @@ window.createRoom = async function () {
       var isReusable = oldRoom.status !== 'lobby' || ageMs > STALE_ROOM_MS;
       if (!isReusable) { alert('そのルームコードは使用中です。別のコードを入力してください。'); return; }
     }
-    mp.myName = name; mp.myId = myId; mp.isHost = true; mp.roomId = roomId;
+    mp.myName = name; mp.myId = myId; mp.isHost = true; mp.roomId = roomId; mp.leavingVoluntarily = false; mp.beingRemoved = false;
 
     // お題モード・問題数はこの時点では決めない（ロビー画面でホストが選ぶ）。
     // 実際の問題リストは startGame() でその時点のモード・問題数から作る。
@@ -1625,11 +1640,13 @@ window.createRoom = async function () {
       status: 'lobby',
       currentQuestionIndex: -1,
       questions: [],
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      lobbyEnteredAt: serverTimestamp()
     });
     await set(ref(db, 'rooms/' + roomId + '/players/' + myId), {
       name: name, isHost: true, score: 0, joinedAt: serverTimestamp()
     });
+    onDisconnect(ref(db, 'rooms/' + roomId + '/players/' + myId)).remove().catch(function () {});
 
     document.getElementById('display-room-code').textContent = roomId;
     attachRoomListeners();
@@ -1654,10 +1671,11 @@ window.joinRoom = async function () {
     var room = snap.val();
     if (room.status !== 'lobby') { alert('このルームはすでに開始しています'); return; }
 
-    mp.myName = name; mp.myId = myId; mp.roomId = code; mp.isHost = false;
+    mp.myName = name; mp.myId = myId; mp.roomId = code; mp.isHost = false; mp.leavingVoluntarily = false; mp.beingRemoved = false;
     await set(ref(db, 'rooms/' + code + '/players/' + myId), {
       name: name, isHost: false, score: 0, joinedAt: serverTimestamp()
     });
+    onDisconnect(ref(db, 'rooms/' + code + '/players/' + myId)).remove().catch(function () {});
 
     document.getElementById('lobby-room-info').textContent = 'ルームコード: ' + code;
     attachRoomListeners();
@@ -1689,7 +1707,8 @@ window.playAgain = async function () {
     var updates = {
       status: 'lobby',
       currentQuestionIndex: -1,
-      questionsProgress: null
+      questionsProgress: null,
+      lobbyEnteredAt: serverTimestamp()
     };
     Object.keys(mp.playersCache).forEach(function (uid) {
       updates['players/' + uid + '/score'] = 0;
@@ -1713,7 +1732,7 @@ function nextRound() {
 }
 
 // ── 共通リスナー（host/guestで分岐しない: 全員が同じイベントで画面遷移する） ──
-function renderPlayerList(containerId, players) {
+function renderPlayerList(containerId, players, showKick) {
   var list = document.getElementById(containerId);
   if (!list) return;
   list.innerHTML = '';
@@ -1725,16 +1744,133 @@ function renderPlayerList(containerId, players) {
     div.innerHTML =
       '<div class="player-dot"></div><span class="player-name">' + escapeHtml(p.name) + '</span>' +
       (p.isHost ? '<span class="player-host-badge">ホスト</span>' : '') +
-      '<span class="player-score">' + p.score + '点</span>';
+      '<span class="player-score">' + p.score + '点</span>' +
+      (showKick && !p.isHost ? '<button class="kick-btn" type="button" data-kick-uid="' + p.uid + '" data-kick-name="' + escapeHtml(p.name) + '">キック</button>' : '');
     list.appendChild(div);
   });
 }
 
+document.getElementById('host-player-list').addEventListener('click', function (e) {
+  var btn = e.target.closest('[data-kick-uid]');
+  if (!btn || !mp.isHost) return;
+  var uid = btn.dataset.kickUid;
+  if (!confirm(btn.dataset.kickName + ' さんをキックしますか？')) return;
+  remove(ref(db, 'rooms/' + mp.roomId + '/players/' + uid)).catch(function (err) {
+    console.error('キックに失敗しました', err);
+    alert('キックできませんでした。通信状況を確認してください。');
+  });
+});
+
+// ルーム/プレイヤーリスト購読の後始末。退場・キック・解散のいずれでも、古い
+// ルームに対するリスナーが残り続けないようにする(別のルームに入った時に前の
+// ルームの更新が誤って反映されるのを防ぐ)。
+function detachRoomListeners() {
+  if (mp.playersListenerPath) { off(ref(db, mp.playersListenerPath)); mp.playersListenerPath = null; }
+  if (mp.roomListenerPath) { off(ref(db, mp.roomListenerPath)); mp.roomListenerPath = null; }
+  if (mp.lobbyDissolveTimer) { clearTimeout(mp.lobbyDissolveTimer); mp.lobbyDissolveTimer = null; }
+}
+
+function leaveRoomCleanup() {
+  stopTimer();
+  detachAnswersListener();
+  detachRoomListeners();
+  // 自分から退出/削除した場合は、後で実際に切断された時に二重で削除が走らない
+  // よう、登録していたonDisconnectを取り消す(既に消えたデータへのremove()は
+  // 無害だが、明示的に片付けておく)。
+  if (mp.roomId && mp.myId) {
+    onDisconnect(ref(db, 'rooms/' + mp.roomId + '/players/' + mp.myId)).cancel().catch(function () {});
+    if (mp.isHost) onDisconnect(ref(db, 'rooms/' + mp.roomId)).cancel().catch(function () {});
+  }
+  mp.roomId = ''; mp.isHost = false; mp.playersCache = {}; mp.currentAnswersCache = {};
+  mp.startingEntered = false; mp.finishedEntered = false; mp.revealTriggered = false;
+  mp.currentQuestionIndex = -1; mp.revealedForIndex = null; mp.answeredThisQuestion = false;
+  mp.leavingVoluntarily = false;
+}
+
+// キックされた・ルームが解散された場合に、自分の意思で退場したのでなければ
+// ここを通ってトップ画面に戻す。
+function handleRemovedFromRoom(message) {
+  // ルーム削除時はplayersリスナーとroomリスナーの両方が「いなくなった」ことを
+  // 別々に検知して両方ここを呼ぶことがあるため、二重アラートを防ぐ。
+  if (mp.beingRemoved) return;
+  mp.beingRemoved = true;
+  leaveRoomCleanup();
+  alert(message);
+  showScreen('screen-top');
+}
+
+window.deleteRoom = function () {
+  if (!mp.isHost || !mp.roomId) return;
+  if (!confirm('ルームを削除しますか？参加者は全員ロビーから退出させられます。')) return;
+  mp.leavingVoluntarily = true;
+  remove(ref(db, 'rooms/' + mp.roomId)).then(function () {
+    leaveRoomCleanup();
+    showScreen('screen-top');
+  }).catch(function (err) {
+    console.error('ルームの削除に失敗しました', err);
+    mp.leavingVoluntarily = false;
+    alert('ルームを削除できませんでした。通信状況を確認してください。');
+  });
+};
+
+window.leaveRoom = function () {
+  if (mp.isHost || !mp.roomId || !mp.myId) return;
+  mp.leavingVoluntarily = true;
+  remove(ref(db, 'rooms/' + mp.roomId + '/players/' + mp.myId)).then(function () {
+    leaveRoomCleanup();
+    showScreen('screen-top');
+  }).catch(function (err) {
+    console.error('退場に失敗しました', err);
+    mp.leavingVoluntarily = false;
+    alert('退場できませんでした。通信状況を確認してください。');
+  });
+};
+
+// ロビーでゲームが開始されないまま90秒経過したら自動でルームを解散し、
+// ルームコードを再利用できるようにする(ホスト側のクライアントだけが実際の
+// 削除を行う。ゲスト側はセキュリティルール上ルーム本体を削除できないため、
+// スケジュールはするが削除の試みはホストのみに絞る)。
+function scheduleLobbyDissolveCheck(lobbyEnteredAtMs) {
+  if (mp.lobbyDissolveTimer) { clearTimeout(mp.lobbyDissolveTimer); mp.lobbyDissolveTimer = null; }
+  if (!mp.isHost || !lobbyEnteredAtMs) return;
+  var remain = LOBBY_IDLE_TIMEOUT_MS - (estimatedServerNow() - lobbyEnteredAtMs);
+  if (remain <= 0) { dissolveRoomIfStillLobby(); return; }
+  mp.lobbyDissolveTimer = window.setTimeout(dissolveRoomIfStillLobby, remain);
+}
+function dissolveRoomIfStillLobby() {
+  mp.lobbyDissolveTimer = null;
+  if (!mp.isHost || !mp.roomId) return;
+  get(ref(db, 'rooms/' + mp.roomId + '/status')).then(function (snap) {
+    if (snap.val() === 'lobby') remove(ref(db, 'rooms/' + mp.roomId)).catch(function () {});
+  }).catch(function () {});
+}
+
+// 全員がタブを閉じた/通信が切れたことを検出してルームを解散したい、という要望への
+// 対応。Firebase側の制約上、「他人の」切断を誰かが検知して掃除する仕組みは無く、
+// 各クライアントは「自分自身」の接続が切れた時に何をするかだけ登録できる
+// (onDisconnect)。ホストがいないとゲームは進行できないため、実質的には
+// 「ホストの接続が切れたらルーム全体を削除」が最も近い実装になる。各参加者は
+// 自分の入室記録(players/{uid})だけを自分の切断時に自動で消す。
+// ゲーム進行中にホストの接続が一瞬だけ不安定になった場合に進行中のゲームを
+// 失わせたくないため、ルーム全体の自動削除はロビー状態の間だけ有効にする。
+function registerHostRoomDisconnect() {
+  if (!mp.isHost || !mp.roomId) return;
+  onDisconnect(ref(db, 'rooms/' + mp.roomId)).remove().catch(function () {});
+}
+function cancelHostRoomDisconnect() {
+  if (!mp.isHost || !mp.roomId) return;
+  onDisconnect(ref(db, 'rooms/' + mp.roomId)).cancel().catch(function () {});
+}
+
 function attachRoomListeners() {
-  onValue(ref(db, 'rooms/' + mp.roomId + '/players'), function (snap) {
+  detachRoomListeners();
+  mp.playersListenerPath = 'rooms/' + mp.roomId + '/players';
+  mp.roomListenerPath = 'rooms/' + mp.roomId;
+
+  onValue(ref(db, mp.playersListenerPath), function (snap) {
     mp.playersCache = snap.val() || {};
-    renderPlayerList('host-player-list', mp.playersCache);
-    renderPlayerList('player-player-list', mp.playersCache);
+    renderPlayerList('host-player-list', mp.playersCache, true);
+    renderPlayerList('player-player-list', mp.playersCache, false);
     // スコアの加算はトランザクションで起きるため反映が一拍遅れることがある。
     // 結果発表/最終結果を見ている最中ならスコアが届くたびにそのまま再描画する。
     if (document.getElementById('screen-round-result').classList.contains('active')) {
@@ -1743,17 +1879,37 @@ function attachRoomListeners() {
     if (document.getElementById('screen-final').classList.contains('active')) {
       renderFinalBoard();
     }
+    if (!mp.isHost && !mp.leavingVoluntarily && !mp.beingRemoved && mp.myId && !mp.playersCache[mp.myId]) {
+      // ルーム全体が解散された場合もplayersが空になり「自分のuidが消えた」ように
+      // 見えるため、個別キックと区別するために実際にルームがまだ存在するか確認
+      // してから判定する(存在しなければroomリスナー側の解散検知に任せる)。
+      var roomIdAtCheck = mp.roomId;
+      get(ref(db, 'rooms/' + roomIdAtCheck)).then(function (snap) {
+        if (mp.beingRemoved || mp.roomId !== roomIdAtCheck) return;
+        if (snap.exists()) handleRemovedFromRoom('ホストによってルームから退出させられました。');
+      }).catch(function () {});
+    }
   });
 
-  onValue(ref(db, 'rooms/' + mp.roomId), function (snap) {
+  onValue(ref(db, mp.roomListenerPath), function (snap) {
     var room = snap.val();
-    if (!room) return;
+    if (!room) {
+      if (!mp.leavingVoluntarily) handleRemovedFromRoom('ルームが解散されました。');
+      return;
+    }
     mp.mode = room.mode;
     mp.questionCount = room.questionCount || DEFAULT_QUESTION_COUNT;
     mp.questionDurationMs = room.questionDurationMs || DEFAULT_QUESTION_DURATION_MS;
     mp.questions = room.questions || [];
 
-    if (room.status === 'lobby') refreshModeQcountUI(room);
+    if (room.status === 'lobby') {
+      refreshModeQcountUI(room);
+      scheduleLobbyDissolveCheck(room.lobbyEnteredAt || room.createdAt);
+      registerHostRoomDisconnect();
+    } else {
+      if (mp.lobbyDissolveTimer) { clearTimeout(mp.lobbyDissolveTimer); mp.lobbyDissolveTimer = null; }
+      cancelHostRoomDisconnect();
+    }
 
     if (room.status === 'starting' && !mp.startingEntered) {
       mp.startingEntered = true;
