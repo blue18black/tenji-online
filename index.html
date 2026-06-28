@@ -1948,6 +1948,24 @@ function registerMyPresenceDisconnect(isLobby) {
   }).catch(function () {});
 }
 
+// onDisconnect()はサーバー側が切断を検知してから発火するため、タブを閉じる操作
+// そのもの(ネットワークがまだ生きている間)に比べると数十秒単位で遅れることがある。
+// タブを閉じる/ページを離れる瞬間にも同じ内容を即座に書き込むことで、サーバー側の
+// 切断検知を待たずにリアルタイムに反映されるようにする(onDisconnectはネットワーク
+// が本当に切れた場合のための保険として残す)。
+function cleanupOnUnload() {
+  if (!mp.roomId || !mp.myId || mp.leavingVoluntarily) return;
+  var playerRef = ref(db, 'rooms/' + mp.roomId + '/players/' + mp.myId);
+  if (mp.presenceDisconnectIsLobby) {
+    remove(playerRef).catch(function () {});
+    if (mp.isHost) remove(ref(db, 'rooms/' + mp.roomId)).catch(function () {});
+  } else {
+    update(playerRef, { left: true }).catch(function () {});
+  }
+}
+window.addEventListener('pagehide', cleanupOnUnload);
+window.addEventListener('beforeunload', cleanupOnUnload);
+
 function attachRoomListeners() {
   detachRoomListeners();
   mp.playersListenerPath = 'rooms/' + mp.roomId + '/players';
