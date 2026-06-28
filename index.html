@@ -567,6 +567,8 @@
       <div class="status-sub">他のプレイヤーの回答を待っています</div>
       <div class="waiting-dots"><span></span><span></span><span></span></div>
     </div>
+
+    <button class="btn btn-danger btn-sm hidden" id="end-game-btn" type="button" style="width:100%; margin-top:14px" onclick="endGame()">ゲームを終了する</button>
   </div>
 </div>
 
@@ -1568,7 +1570,8 @@ var mp = {
   answeredThisQuestion: false, playersCache: {}, currentAnswersCache: {},
   answersPath: null, playersListenerPath: null, roomListenerPath: null,
   timerHandle: null, phaseStartedAtMs: 0, lobbyDissolveTimer: null,
-  leavingVoluntarily: false, beingRemoved: false
+  leavingVoluntarily: false, beingRemoved: false,
+  presenceDisconnectIsLobby: null, hostRoomDisconnectRegistered: false
 };
 
 var mpDom = buildAnswerEngineDom(document.getElementById('mpAnswerMount'));
@@ -1655,6 +1658,7 @@ window.createRoom = async function () {
       name: name, isHost: true, score: 0, joinedAt: serverTimestamp()
     });
     onDisconnect(ref(db, 'rooms/' + roomId + '/players/' + myId)).remove().catch(function () {});
+    mp.presenceDisconnectIsLobby = true;
 
     document.getElementById('display-room-code').textContent = roomId;
     attachRoomListeners();
@@ -1684,6 +1688,7 @@ window.joinRoom = async function () {
       name: name, isHost: false, score: 0, joinedAt: serverTimestamp()
     });
     onDisconnect(ref(db, 'rooms/' + code + '/players/' + myId)).remove().catch(function () {});
+    mp.presenceDisconnectIsLobby = true;
 
     document.getElementById('lobby-room-info').textContent = 'ルームコード: ' + code;
     attachRoomListeners();
@@ -1745,6 +1750,31 @@ function nextRound() {
   });
 }
 
+// ホストがその場でゲームを切り上げ、現在の累積スコアで最終結果に進む。今
+// 表示されていた問題の分は採点に含めない。すでに回答していた人がいた場合は、
+// その問題で入った加点だけをトランザクションで打ち消してから終了する。
+window.endGame = async function () {
+  if (!mp.isHost || !mp.roomId) return;
+  if (!confirm('ゲームを終了して、ここまでの結果を表示しますか？今の問題の点数は反映されません。')) return;
+  try {
+    stopTimer();
+    var answersSnap = await get(ref(db, 'rooms/' + mp.roomId + '/questionsProgress/' + mp.currentQuestionIndex + '/answers'));
+    var answers = answersSnap.val() || {};
+    var undoPromises = Object.keys(answers).map(function (uid) {
+      var pts = answers[uid].pointsAwarded || 0;
+      if (pts <= 0) return Promise.resolve();
+      return runTransaction(ref(db, 'rooms/' + mp.roomId + '/players/' + uid + '/score'), function (current) {
+        return (current || 0) - pts;
+      });
+    });
+    await Promise.all(undoPromises);
+    await update(ref(db, 'rooms/' + mp.roomId), { status: 'finished' });
+  } catch (err) {
+    console.error('ゲーム終了に失敗しました', err);
+    alert('ゲームを終了できませんでした。通信状況を確認してください。');
+  }
+};
+
 // ── 共通リスナー（host/guestで分岐しない: 全員が同じイベントで画面遷移する） ──
 function renderPlayerList(containerId, players, showKick) {
   var list = document.getElementById(containerId);
@@ -1799,7 +1829,7 @@ function leaveRoomCleanup() {
   mp.roomId = ''; mp.isHost = false; mp.playersCache = {}; mp.currentAnswersCache = {};
   mp.startingEntered = false; mp.finishedEntered = false; mp.revealTriggered = false;
   mp.currentQuestionIndex = -1; mp.revealedForIndex = null; mp.answeredThisQuestion = false;
-  mp.leavingVoluntarily = false;
+  mp.leavingVoluntarily = false; mp.presenceDisconnectIsLobby = null; mp.hostRoomDisconnectRegistered = false;
 }
 
 // キックされた・ルームが解散された場合に、自分の意思で退場したのでなければ
@@ -1873,8 +1903,15 @@ function dissolveRoomIfStillLobby() {
 // 古い登録(例: ロビー中に登録したremove())が消えずに残ったまま新しい登録が積み重なり、
 // 切断時に「全部消える→部分的なデータだけ再生成される」という壊れ方をする。
 // そのため新しく登録する前に必ずcancel()して、常に1つだけが有効な状態にする。
+// status==='lobby'の間、ロビー画面でモード/問題数ボタンを押すたびにルームの
+// onValueが再発火し、その都度ここを呼んでいた。cancel→registerは往復が必要な
+// 非同期処理なので、毎回呼ぶと(1)無駄な通信が増えるだけでなく(2)その往復の間に
+// 実際に切断されると一瞬どちらの登録も効いていない空白ができてしまう
+// (退出のリアルタイム性が下がる原因)。同じ状態への再登録はスキップして、
+// 実際にロビー⇄ゲーム中の切り替えが起きた時だけcancel→registerするようにする。
 function registerHostRoomDisconnect() {
-  if (!mp.isHost || !mp.roomId) return;
+  if (!mp.isHost || !mp.roomId || mp.hostRoomDisconnectRegistered) return;
+  mp.hostRoomDisconnectRegistered = true;
   var ref_ = ref(db, 'rooms/' + mp.roomId);
   onDisconnect(ref_).cancel().then(function () {
     onDisconnect(ref_).remove().catch(function () {});
@@ -1882,15 +1919,17 @@ function registerHostRoomDisconnect() {
 }
 function cancelHostRoomDisconnect() {
   if (!mp.isHost || !mp.roomId) return;
+  mp.hostRoomDisconnectRegistered = false;
   onDisconnect(ref(db, 'rooms/' + mp.roomId)).cancel().catch(function () {});
 }
 
 // 自分自身の入室記録に対する切断時の挙動。ロビー中はそのまま消してよいが、
 // ゲーム中に切断された場合はスコアを消さず「退出しました」として残したい
-// （ランキングからいきなり消えると分かりづらいため）。ルームのstatusが
-// 変わるたびに登録し直すことで、切断のタイミングに応じた挙動に切り替える。
+// （ランキングからいきなり消えると分かりづらいため）。ロビー⇄ゲーム中が
+// 切り替わった時だけ登録し直す（同じ状態への再登録はスキップ。理由は上記）。
 function registerMyPresenceDisconnect(isLobby) {
-  if (!mp.roomId || !mp.myId) return;
+  if (!mp.roomId || !mp.myId || mp.presenceDisconnectIsLobby === isLobby) return;
+  mp.presenceDisconnectIsLobby = isLobby;
   var ref_ = ref(db, 'rooms/' + mp.roomId + '/players/' + mp.myId);
   onDisconnect(ref_).cancel().then(function () {
     if (isLobby) onDisconnect(ref_).remove().catch(function () {});
@@ -1914,6 +1953,12 @@ function attachRoomListeners() {
     }
     if (document.getElementById('screen-final').classList.contains('active')) {
       renderFinalBoard();
+    }
+    // 退出(left:true)は回答ではなくplayersの更新として届くため、その後だれも
+    // 新たに回答しないと早期結果発表の判定が再評価されないまま固まってしまう。
+    // 問題に回答中の画面の時だけ、ここでも早期結果発表の判定をやり直す。
+    if (document.getElementById('screen-game').classList.contains('active')) {
+      maybeEarlyReveal();
     }
     if (!mp.isHost && !mp.leavingVoluntarily && !mp.beingRemoved && mp.myId && !mp.playersCache[mp.myId]) {
       // ルーム全体が解散された場合もplayersが空になり「自分のuidが消えた」ように
@@ -2014,6 +2059,7 @@ function enterQuestion() {
   document.getElementById('round-label').textContent = '問題 ' + (mp.currentQuestionIndex + 1) + ' / ' + mp.questions.length;
   var myScore = (mp.playersCache[mp.myId] && mp.playersCache[mp.myId].score) || 0;
   document.getElementById('my-score-label').textContent = myScore + '点';
+  document.getElementById('end-game-btn').classList.toggle('hidden', !mp.isHost);
 
   var word = mp.questions[mp.currentQuestionIndex];
   mpEngine.load(mp.mode === 'number' ? 'number' : mp.mode, word, {
@@ -2295,6 +2341,9 @@ function renderFinalBoard() {
 function enterFinal() {
   stopTimer();
   detachAnswersListener();
+  // 自動送信待ちのタイマーが残っていれば止める(ホストの「ゲームを終了」で
+  // 突然終わった場合、今の問題の答え合わせ分が後から届いて加点されるのを防ぐ)。
+  mpEngine.getProgressSnapshot();
   showScreen('screen-final');
   document.getElementById('final-actions-host').classList.toggle('hidden', !mp.isHost);
   document.getElementById('final-actions-guest').classList.toggle('hidden', mp.isHost);
