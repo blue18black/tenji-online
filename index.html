@@ -411,25 +411,12 @@
     <input type="text" id="host-name" placeholder="例: さくら" maxlength="10">
   </div>
 
-  <div class="section-head">お題モード</div>
-  <div style="display:flex; gap:8px" id="create-mode-buttons">
-    <button class="btn btn-primary btn-sm" data-online-mode="word" style="flex:1">単語</button>
-    <button class="btn btn-secondary btn-sm" data-online-mode="sentence" style="flex:1">文章</button>
-    <button class="btn btn-secondary btn-sm" data-online-mode="number" style="flex:1">数字</button>
-    <button class="btn btn-secondary btn-sm" data-online-mode="reading" style="flex:1">読み</button>
-  </div>
-
-  <div class="section-head">問題数</div>
-  <div style="display:flex; gap:8px" id="create-qcount-buttons">
-    <button class="btn btn-secondary btn-sm" data-qcount="5" style="flex:1">5問</button>
-    <button class="btn btn-primary btn-sm" data-qcount="10" style="flex:1">10問</button>
-    <button class="btn btn-secondary btn-sm" data-qcount="15" style="flex:1">15問</button>
-  </div>
-
   <div class="field" style="margin-top:16px">
     <label>ルームコード（自分で決める）</label>
     <input type="text" id="create-roomcode" placeholder="例: sakura123" maxlength="20">
   </div>
+
+  <p style="font-size:12px; color:var(--ink3); margin-top:10px">お題モードと問題数はルーム作成後、ロビーで選べます。</p>
 
   <div class="spacer"></div>
 
@@ -483,6 +470,21 @@
   <div class="section-head">参加者</div>
   <div id="host-player-list" class="player-list"></div>
 
+  <div class="section-head">お題モード</div>
+  <div style="display:flex; gap:8px" id="lobby-mode-buttons">
+    <button class="btn btn-primary btn-sm" data-online-mode="word" style="flex:1">単語</button>
+    <button class="btn btn-secondary btn-sm" data-online-mode="sentence" style="flex:1">文章</button>
+    <button class="btn btn-secondary btn-sm" data-online-mode="number" style="flex:1">数字</button>
+    <button class="btn btn-secondary btn-sm" data-online-mode="reading" style="flex:1">読み</button>
+  </div>
+
+  <div class="section-head">問題数</div>
+  <div style="display:flex; gap:8px" id="lobby-qcount-buttons">
+    <button class="btn btn-secondary btn-sm" data-qcount="5" style="flex:1">5問</button>
+    <button class="btn btn-primary btn-sm" data-qcount="10" style="flex:1">10問</button>
+    <button class="btn btn-secondary btn-sm" data-qcount="15" style="flex:1">15問</button>
+  </div>
+
   <div class="spacer"></div>
 
   <div class="btn-stack">
@@ -501,6 +503,7 @@
   <div class="status-card">
     <div class="status-title">ホストの開始を待っています</div>
     <div class="status-sub" id="lobby-room-info">ルームコード: ——</div>
+    <div class="status-sub" id="lobby-mode-info">お題: ——</div>
     <div class="waiting-dots"><span></span><span></span><span></span></div>
   </div>
 
@@ -590,6 +593,13 @@
   <div id="final-score-list" style="display:flex; flex-direction:column; gap:8px"></div>
 
   <div class="spacer"></div>
+
+  <div class="btn-stack" id="final-actions-host">
+    <button class="btn btn-accent" onclick="playAgain()">もう一度プレイ</button>
+  </div>
+  <div class="status-card hidden" id="final-actions-guest" style="text-align:center; margin-bottom:12px">
+    <div class="status-sub">ホストが「もう一度プレイ」を選ぶと、ロビーに戻ります</div>
+  </div>
 
   <button class="btn btn-secondary" onclick="location.reload()">タイトルにもどる</button>
   </div>
@@ -1517,10 +1527,13 @@ var START_COUNTDOWN_MS = 3000;
 var REVEAL_COUNTDOWN_MS = 6000;
 var STALE_ROOM_MS = 6 * 60 * 60 * 1000; // 6時間: これより古い未終了ルームもコードを再利用可能にする
 var MP_AUTO_FINISH_DELAY_MS = 1800;
+var DEFAULT_QUESTION_COUNT = 10;
+var ONLINE_MODE_LABELS = { word: '単語', sentence: '文章', number: '数字', reading: '読み' };
 
 var mp = {
   myId: null, myName: '', roomId: '', isHost: false,
-  mode: 'word', questionDurationMs: DEFAULT_QUESTION_DURATION_MS, questions: [],
+  mode: 'word', questionCount: DEFAULT_QUESTION_COUNT,
+  questionDurationMs: DEFAULT_QUESTION_DURATION_MS, questions: [],
   currentQuestionIndex: -1, questionStartedAtMs: 0, revealedForIndex: null,
   startingEntered: false, finishedEntered: false, revealTriggered: false,
   answeredThisQuestion: false, playersCache: {}, currentAnswersCache: {},
@@ -1541,22 +1554,30 @@ function sanitizeRoomCode(raw) {
   return (raw || '').trim().replace(/[.#$\[\]\/\s]/g, '').slice(0, 20);
 }
 
-var selectedOnlineMode = 'word';
-document.querySelectorAll('#create-mode-buttons [data-online-mode]').forEach(function (btn) {
+// お題モード・問題数はルーム作成画面ではなくロビー画面で選ぶ（ホストのみ操作可能。
+// ボタンを押すとルーム本体に直接書き込み、ゲストの画面にもリアルタイムで反映される）。
+function refreshModeQcountUI(room) {
+  var mode = room.mode || 'word';
+  var qcount = room.questionCount || DEFAULT_QUESTION_COUNT;
+  document.querySelectorAll('#lobby-mode-buttons [data-online-mode]').forEach(function (b) {
+    b.className = 'btn btn-sm ' + (b.dataset.onlineMode === mode ? 'btn-primary' : 'btn-secondary');
+  });
+  document.querySelectorAll('#lobby-qcount-buttons [data-qcount]').forEach(function (b) {
+    b.className = 'btn btn-sm ' + (b.dataset.qcount === String(qcount) ? 'btn-primary' : 'btn-secondary');
+  });
+  var info = document.getElementById('lobby-mode-info');
+  if (info) info.textContent = 'お題: ' + (ONLINE_MODE_LABELS[mode] || mode) + '（' + qcount + '問）';
+}
+document.querySelectorAll('#lobby-mode-buttons [data-online-mode]').forEach(function (btn) {
   btn.addEventListener('click', function () {
-    selectedOnlineMode = btn.dataset.onlineMode;
-    document.querySelectorAll('#create-mode-buttons [data-online-mode]').forEach(function (b) {
-      b.className = 'btn btn-sm ' + (b === btn ? 'btn-primary' : 'btn-secondary');
-    });
+    if (!mp.isHost || !mp.roomId) return;
+    update(ref(db, 'rooms/' + mp.roomId), { mode: btn.dataset.onlineMode }).catch(function () {});
   });
 });
-var selectedQCount = 10;
-document.querySelectorAll('#create-qcount-buttons [data-qcount]').forEach(function (btn) {
+document.querySelectorAll('#lobby-qcount-buttons [data-qcount]').forEach(function (btn) {
   btn.addEventListener('click', function () {
-    selectedQCount = parseInt(btn.dataset.qcount, 10);
-    document.querySelectorAll('#create-qcount-buttons [data-qcount]').forEach(function (b) {
-      b.className = 'btn btn-sm ' + (b === btn ? 'btn-primary' : 'btn-secondary');
-    });
+    if (!mp.isHost || !mp.roomId) return;
+    update(ref(db, 'rooms/' + mp.roomId), { questionCount: parseInt(btn.dataset.qcount, 10) }).catch(function () {});
   });
 });
 
@@ -1582,16 +1603,16 @@ window.createRoom = async function () {
     }
     mp.myName = name; mp.myId = myId; mp.isHost = true; mp.roomId = roomId;
 
-    var pool = poolForOnlineMode(selectedOnlineMode);
-    var qWords = shuffle(pool).slice(0, selectedQCount);
-
+    // お題モード・問題数はこの時点では決めない（ロビー画面でホストが選ぶ）。
+    // 実際の問題リストは startGame() でその時点のモード・問題数から作る。
     await set(ref(db, 'rooms/' + roomId), {
       hostUid: myId,
-      mode: selectedOnlineMode,
+      mode: 'word',
+      questionCount: DEFAULT_QUESTION_COUNT,
       questionDurationMs: DEFAULT_QUESTION_DURATION_MS,
       status: 'lobby',
       currentQuestionIndex: -1,
-      questions: qWords,
+      questions: [],
       createdAt: serverTimestamp()
     });
     await set(ref(db, 'rooms/' + roomId + '/players/' + myId), {
@@ -1637,10 +1658,34 @@ window.joinRoom = async function () {
 
 window.startGame = async function () {
   try {
-    await update(ref(db, 'rooms/' + mp.roomId), { status: 'starting', phaseStartedAt: serverTimestamp() });
+    var pool = poolForOnlineMode(mp.mode);
+    var qWords = shuffle(pool).slice(0, mp.questionCount || DEFAULT_QUESTION_COUNT);
+    await update(ref(db, 'rooms/' + mp.roomId), {
+      status: 'starting', phaseStartedAt: serverTimestamp(), questions: qWords
+    });
   } catch (err) {
     console.error('ゲーム開始に失敗しました', err);
     alert('ゲームを開始できませんでした。Firebaseのセキュリティルールが正しく設定されているか確認してください。');
+  }
+};
+
+// ── もう一度プレイ（ホストのみ）。ルームコードを新しく発行せず、同じルームを
+//    ロビーに戻す。スコア・各問題の回答記録をリセットする。 ──
+window.playAgain = async function () {
+  if (!mp.isHost || !mp.roomId) return;
+  try {
+    var updates = {
+      status: 'lobby',
+      currentQuestionIndex: -1,
+      questionsProgress: null
+    };
+    Object.keys(mp.playersCache).forEach(function (uid) {
+      updates['players/' + uid + '/score'] = 0;
+    });
+    await update(ref(db, 'rooms/' + mp.roomId), updates);
+  } catch (err) {
+    console.error('もう一度プレイの準備に失敗しました', err);
+    alert('もう一度プレイを開始できませんでした。通信状況を確認してください。');
   }
 };
 
@@ -1692,8 +1737,11 @@ function attachRoomListeners() {
     var room = snap.val();
     if (!room) return;
     mp.mode = room.mode;
+    mp.questionCount = room.questionCount || DEFAULT_QUESTION_COUNT;
     mp.questionDurationMs = room.questionDurationMs || DEFAULT_QUESTION_DURATION_MS;
     mp.questions = room.questions || [];
+
+    if (room.status === 'lobby') refreshModeQcountUI(room);
 
     if (room.status === 'starting' && !mp.startingEntered) {
       mp.startingEntered = true;
@@ -1710,6 +1758,18 @@ function attachRoomListeners() {
     } else if (room.status === 'finished' && !mp.finishedEntered) {
       mp.finishedEntered = true;
       enterFinal();
+    } else if (room.status === 'lobby' && (mp.startingEntered || mp.finishedEntered)) {
+      // 「もう一度プレイ」でロビーに戻ってきた。次回のゲーム開始に向けて
+      // ローカルの進行状態フラグをリセットする。
+      mp.startingEntered = false;
+      mp.finishedEntered = false;
+      mp.revealTriggered = false;
+      mp.revealedForIndex = null;
+      mp.currentQuestionIndex = -1;
+      detachAnswersListener();
+      document.getElementById('display-room-code').textContent = mp.roomId;
+      document.getElementById('lobby-room-info').textContent = 'ルームコード: ' + mp.roomId;
+      showScreen(mp.isHost ? 'screen-lobby-host' : 'screen-lobby-player');
     }
   });
 }
@@ -1887,7 +1947,12 @@ function renderMarkers(revealed) {
   Object.keys(mp.currentAnswersCache).forEach(function (uid) {
     var ans = mp.currentAnswersCache[uid];
     if (!ans || typeof ans.answeredAt !== 'number') return;
-    var pct = Math.max(0, Math.min(1, (ans.answeredAt - mp.questionStartedAtMs) / mp.questionDurationMs)) * 100;
+    // timer-fill は左端に固定したまま width(残り時間の割合)を縮めて減っていくため、
+    // バーが「減っていく先端」は右から左へ進む。マーカーもこの残り時間の割合の位置に
+    // 置かないと、回答した瞬間のバーの先端とズレた場所に表示されてしまう
+    // （以前は経過時間の割合をそのまま left に使っていたため、左右が逆になっていた）。
+    var elapsedFrac = Math.max(0, Math.min(1, (ans.answeredAt - mp.questionStartedAtMs) / mp.questionDurationMs));
+    var pct = (1 - elapsedFrac) * 100;
     var chip = container.querySelector('[data-uid="' + uid + '"]');
     if (!chip) {
       chip = document.createElement('div');
@@ -2005,6 +2070,8 @@ function enterFinal() {
   stopTimer();
   detachAnswersListener();
   showScreen('screen-final');
+  document.getElementById('final-actions-host').classList.toggle('hidden', !mp.isHost);
+  document.getElementById('final-actions-guest').classList.toggle('hidden', mp.isHost);
   var sorted = renderFinalBoard();
   if (sorted[0] && sorted[0].uid === mp.myId) launchConfetti();
 }
