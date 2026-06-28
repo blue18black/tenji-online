@@ -1559,6 +1559,8 @@ var STALE_ROOM_MS = 6 * 60 * 60 * 1000; // 6時間: これより古い未終了�
 var MP_AUTO_FINISH_DELAY_MS = 1800;
 var DEFAULT_QUESTION_COUNT = 10;
 var LOBBY_IDLE_TIMEOUT_MS = 90 * 1000; // ロビーでゲーム開始されないまま90秒経過したら自動解散
+var HEARTBEAT_INTERVAL_MS = 8000; // 各参加者が自分の生存時刻を書き込む間隔
+var HEARTBEAT_STALE_MS = 20000; // これより前のlastSeenのままなら退出扱いにする(数回分の取りこぼしを許容)
 var ONLINE_MODE_LABELS = { word: '単語', sentence: '文章', number: '数字', reading: '読み' };
 
 var mp = {
@@ -1571,7 +1573,8 @@ var mp = {
   answersPath: null, playersListenerPath: null, roomListenerPath: null,
   timerHandle: null, phaseStartedAtMs: 0, lobbyDissolveTimer: null,
   leavingVoluntarily: false, beingRemoved: false,
-  presenceDisconnectIsLobby: null, hostRoomDisconnectRegistered: false
+  presenceDisconnectIsLobby: null, hostRoomDisconnectRegistered: false,
+  heartbeatTimer: null, staleCheckTimer: null
 };
 
 var mpDom = buildAnswerEngineDom(document.getElementById('mpAnswerMount'));
@@ -1655,10 +1658,12 @@ window.createRoom = async function () {
       lobbyEnteredAt: serverTimestamp()
     });
     await set(ref(db, 'rooms/' + roomId + '/players/' + myId), {
-      name: name, isHost: true, score: 0, joinedAt: serverTimestamp()
+      name: name, isHost: true, score: 0, joinedAt: serverTimestamp(), lastSeen: serverTimestamp()
     });
     onDisconnect(ref(db, 'rooms/' + roomId + '/players/' + myId)).remove().catch(function () {});
     mp.presenceDisconnectIsLobby = true;
+    startHeartbeat();
+    startStaleCheck();
 
     document.getElementById('display-room-code').textContent = roomId;
     attachRoomListeners();
@@ -1685,10 +1690,11 @@ window.joinRoom = async function () {
 
     mp.myName = name; mp.myId = myId; mp.roomId = code; mp.isHost = false; mp.leavingVoluntarily = false; mp.beingRemoved = false;
     await set(ref(db, 'rooms/' + code + '/players/' + myId), {
-      name: name, isHost: false, score: 0, joinedAt: serverTimestamp()
+      name: name, isHost: false, score: 0, joinedAt: serverTimestamp(), lastSeen: serverTimestamp()
     });
     onDisconnect(ref(db, 'rooms/' + code + '/players/' + myId)).remove().catch(function () {});
     mp.presenceDisconnectIsLobby = true;
+    startHeartbeat();
 
     document.getElementById('lobby-room-info').textContent = 'ルームコード: ' + code;
     attachRoomListeners();
@@ -1808,6 +1814,8 @@ function detachRoomListeners() {
 
 function leaveRoomCleanup() {
   stopTimer();
+  stopHeartbeat();
+  stopStaleCheck();
   detachAnswersListener();
   detachRoomListeners();
   // 自分から退出/削除した場合は、後で実際に切断された時に二重で削除が走らない
@@ -1965,6 +1973,50 @@ function cleanupOnUnload() {
 }
 window.addEventListener('pagehide', cleanupOnUnload);
 window.addEventListener('beforeunload', cleanupOnUnload);
+
+// pagehide/beforeunloadは「ブラウザがページを破棄する前にその場で送信中の通信が
+// 完了する」保証が無く、実際のタブの閉じ方によっては書き込みが間に合わないことが
+// ある(Web標準側の既知の制約)。onDisconnectも含め、どちらも「うまくいけば速い」
+// ベストエフォートに過ぎないため、最終的な保険として、定期的な生存確認
+// (ハートビート)で確実に検知できるようにする。切断の原因(タブを閉じる/クラッシュ/
+// 通信切断など)を問わず、一定時間更新が無ければ退出扱いにする。
+function startHeartbeat() {
+  stopHeartbeat();
+  sendHeartbeat();
+  mp.heartbeatTimer = window.setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
+}
+function stopHeartbeat() {
+  if (mp.heartbeatTimer) { clearInterval(mp.heartbeatTimer); mp.heartbeatTimer = null; }
+}
+function sendHeartbeat() {
+  if (!mp.roomId || !mp.myId) return;
+  update(ref(db, 'rooms/' + mp.roomId + '/players/' + mp.myId), { lastSeen: serverTimestamp() }).catch(function () {});
+}
+
+// ホストだけが他人のlastSeenを見て退出を判定する(キック等と同様、他人のplayers
+// ノードを書き換えられるのはホストの書き込み権限の範囲内だけのため)。
+function startStaleCheck() {
+  stopStaleCheck();
+  mp.staleCheckTimer = window.setInterval(checkStalePlayers, HEARTBEAT_INTERVAL_MS);
+}
+function stopStaleCheck() {
+  if (mp.staleCheckTimer) { clearInterval(mp.staleCheckTimer); mp.staleCheckTimer = null; }
+}
+function checkStalePlayers() {
+  if (!mp.isHost || !mp.roomId) return;
+  var nowMs = estimatedServerNow();
+  Object.keys(mp.playersCache).forEach(function (uid) {
+    var p = mp.playersCache[uid];
+    if (!p || p.left || uid === mp.myId) return;
+    if (typeof p.lastSeen !== 'number') return;
+    if (nowMs - p.lastSeen <= HEARTBEAT_STALE_MS) return;
+    if (mp.presenceDisconnectIsLobby) {
+      remove(ref(db, 'rooms/' + mp.roomId + '/players/' + uid)).catch(function () {});
+    } else {
+      update(ref(db, 'rooms/' + mp.roomId + '/players/' + uid), { left: true }).catch(function () {});
+    }
+  });
+}
 
 function attachRoomListeners() {
   detachRoomListeners();
