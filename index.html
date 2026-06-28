@@ -165,6 +165,7 @@
   .player-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--hit); flex-shrink: 0; }
   .player-name { font-weight: 600; }
   .player-host-badge { font-size: 10px; background: var(--accent-light); color: var(--blue); padding: 2px 6px; border-radius: 6px; font-weight: 700; }
+  .player-left-badge { font-size: 10px; background: #eceaf0; color: var(--ink3); padding: 2px 6px; border-radius: 6px; font-weight: 700; margin-left: 6px; }
   .player-score { margin-left: auto; font-weight: 800; color: var(--purple); font-size: 14px; }
 
   /* ── GAME HEADER / TIMER ── */
@@ -574,7 +575,10 @@
 ═════════════════════════════════ -->
 <div id="screen-round-result" class="screen">
   <div class="screen-card">
-  <div class="logo">結果発表</div>
+  <div class="logo" style="display:flex; justify-content:space-between; align-items:center">
+    <span>結果発表</span>
+    <span class="round-badge" id="result-round-label">問題 1 / 10</span>
+  </div>
 
   <div class="answer-reveal" style="margin-bottom:14px">
     <div class="answer-label2">正解</div>
@@ -621,7 +625,7 @@
     <div class="status-sub">ホストが「もう一度プレイ」を選ぶと、ロビーに戻ります</div>
   </div>
 
-  <button class="btn btn-secondary" onclick="location.reload()">タイトルにもどる</button>
+  <button class="btn btn-secondary" style="margin-top:12px" onclick="location.reload()">タイトルにもどる</button>
   </div>
 </div>
 
@@ -1618,14 +1622,18 @@ window.createRoom = async function () {
   try {
     await authReady;
     var existing = await get(ref(db, 'rooms/' + roomId));
-    // ゲームがスタートした（ロビーを抜けた）ルームはもう新しい参加者を募集していないので、
-    // 終了を待たずにそのコードを再利用できるようにする。ロビーで止まっている場合だけ
-    // 「使用中」として拒否し、長時間放置されたロビーは古いものとして再利用を許可する。
-    // set()で新しいルームに丸ごと置き換えるので、古いplayers/questionsProgressも一緒に消える。
+    // 「ゲームが始まったら再利用可」だけを根拠にすると、自分とは別の人が同じコードで
+    // set()し直した瞬間、元の参加者がまだ繋がっているルームのデータがそのまま
+    // 別ゲームのデータに置き換わってしまう(進行中のゲームが壊れる)。そのため
+    // 別の人による再利用は「自分が元のホストである」か「十分古い(放置された)
+    // ルームである」場合のみに限定する。通常は部屋削除ボタン・90秒未開始タイムアウト・
+    // ホストの接続切れ(onDisconnect)のいずれかで実際に削除されるので、再作成時には
+    // ルームが存在しない状態になっているのが基本ルート。このチェックはセキュリティ
+    // ルール側の許可条件と一致させてある(でないと書き込み自体がpermission_deniedになる)。
     if (existing.exists()) {
       var oldRoom = existing.val();
       var ageMs = Date.now() - (oldRoom.createdAt || 0);
-      var isReusable = oldRoom.status !== 'lobby' || ageMs > STALE_ROOM_MS;
+      var isReusable = oldRoom.hostUid === myId || ageMs > STALE_ROOM_MS;
       if (!isReusable) { alert('そのルームコードは使用中です。別のコードを入力してください。'); return; }
     }
     mp.myName = name; mp.myId = myId; mp.isHost = true; mp.roomId = roomId; mp.leavingVoluntarily = false; mp.beingRemoved = false;
@@ -1710,8 +1718,14 @@ window.playAgain = async function () {
       questionsProgress: null,
       lobbyEnteredAt: serverTimestamp()
     };
+    // ゲーム中に抜けた人(left:trueのまま残っている人)は、次のゲームのロビーに
+    // 移るタイミングで参加者一覧から完全に削除する。
     Object.keys(mp.playersCache).forEach(function (uid) {
-      updates['players/' + uid + '/score'] = 0;
+      if (mp.playersCache[uid].left) {
+        updates['players/' + uid] = null;
+      } else {
+        updates['players/' + uid + '/score'] = 0;
+      }
     });
     await update(ref(db, 'rooms/' + mp.roomId), updates);
   } catch (err) {
@@ -1737,15 +1751,16 @@ function renderPlayerList(containerId, players, showKick) {
   if (!list) return;
   list.innerHTML = '';
   Object.keys(players).map(function (uid) {
-    var p = players[uid]; return { uid: uid, name: p.name, isHost: p.isHost, score: p.score || 0, joinedAt: p.joinedAt || 0 };
+    var p = players[uid]; return { uid: uid, name: p.name, isHost: p.isHost, score: p.score || 0, joinedAt: p.joinedAt || 0, left: !!p.left };
   }).sort(function (a, b) { return a.joinedAt - b.joinedAt; }).forEach(function (p) {
     var div = document.createElement('div');
     div.className = 'player-item';
     div.innerHTML =
       '<div class="player-dot"></div><span class="player-name">' + escapeHtml(p.name) + '</span>' +
       (p.isHost ? '<span class="player-host-badge">ホスト</span>' : '') +
+      (p.left ? '<span class="player-left-badge">退出しました</span>' : '') +
       '<span class="player-score">' + p.score + '点</span>' +
-      (showKick && !p.isHost ? '<button class="kick-btn" type="button" data-kick-uid="' + p.uid + '" data-kick-name="' + escapeHtml(p.name) + '">キック</button>' : '');
+      (showKick && !p.isHost && !p.left ? '<button class="kick-btn" type="button" data-kick-uid="' + p.uid + '" data-kick-name="' + escapeHtml(p.name) + '">キック</button>' : '');
     list.appendChild(div);
   });
 }
@@ -1853,13 +1868,34 @@ function dissolveRoomIfStillLobby() {
 // 自分の入室記録(players/{uid})だけを自分の切断時に自動で消す。
 // ゲーム進行中にホストの接続が一瞬だけ不安定になった場合に進行中のゲームを
 // 失わせたくないため、ルーム全体の自動削除はロビー状態の間だけ有効にする。
+// onDisconnect()は同じパスに対して複数回登録すると「上書き」ではなく「追加」される
+// (切断時に登録した順番で全部実行される)。ルームのstatusが変わるたびに登録し直すと、
+// 古い登録(例: ロビー中に登録したremove())が消えずに残ったまま新しい登録が積み重なり、
+// 切断時に「全部消える→部分的なデータだけ再生成される」という壊れ方をする。
+// そのため新しく登録する前に必ずcancel()して、常に1つだけが有効な状態にする。
 function registerHostRoomDisconnect() {
   if (!mp.isHost || !mp.roomId) return;
-  onDisconnect(ref(db, 'rooms/' + mp.roomId)).remove().catch(function () {});
+  var ref_ = ref(db, 'rooms/' + mp.roomId);
+  onDisconnect(ref_).cancel().then(function () {
+    onDisconnect(ref_).remove().catch(function () {});
+  }).catch(function () {});
 }
 function cancelHostRoomDisconnect() {
   if (!mp.isHost || !mp.roomId) return;
   onDisconnect(ref(db, 'rooms/' + mp.roomId)).cancel().catch(function () {});
+}
+
+// 自分自身の入室記録に対する切断時の挙動。ロビー中はそのまま消してよいが、
+// ゲーム中に切断された場合はスコアを消さず「退出しました」として残したい
+// （ランキングからいきなり消えると分かりづらいため）。ルームのstatusが
+// 変わるたびに登録し直すことで、切断のタイミングに応じた挙動に切り替える。
+function registerMyPresenceDisconnect(isLobby) {
+  if (!mp.roomId || !mp.myId) return;
+  var ref_ = ref(db, 'rooms/' + mp.roomId + '/players/' + mp.myId);
+  onDisconnect(ref_).cancel().then(function () {
+    if (isLobby) onDisconnect(ref_).remove().catch(function () {});
+    else onDisconnect(ref_).update({ left: true }).catch(function () {});
+  }).catch(function () {});
 }
 
 function attachRoomListeners() {
@@ -1902,6 +1938,7 @@ function attachRoomListeners() {
     mp.questionDurationMs = room.questionDurationMs || DEFAULT_QUESTION_DURATION_MS;
     mp.questions = room.questions || [];
 
+    registerMyPresenceDisconnect(room.status === 'lobby');
     if (room.status === 'lobby') {
       refreshModeQcountUI(room);
       scheduleLobbyDissolveCheck(room.lobbyEnteredAt || room.createdAt);
@@ -2034,7 +2071,11 @@ function onTimerExpired() {
 // 全員の回答がanswersに揃ったら、タイマーが残っていてもホストがすぐ結果発表に進める。
 function maybeEarlyReveal() {
   if (!mp.isHost) return;
-  var totalPlayers = Object.keys(mp.playersCache).length;
+  // 退出済み(left:true)の人はもう二度と回答できないので、人数に含めると
+  // 早期の結果発表が永久に発生せず毎回タイマー切れまで待つことになってしまう。
+  var totalPlayers = Object.keys(mp.playersCache).filter(function (uid) {
+    return !mp.playersCache[uid].left;
+  }).length;
   // pingMyAnswerMarker()による先行通知(採点前の仮データ、answeredAtのみ)は
   // 「回答済み」に数えない。本採点の書き込み(pointsAwardedを持つ)が届いた
   // 人数だけで判定することで、結果発表のタイミング自体は従来通りに保つ。
@@ -2155,7 +2196,7 @@ function renderMarkers(revealed) {
 // ── ラウンド結果 ──
 function renderTotalLeaderboard(containerId) {
   var sorted = Object.keys(mp.playersCache).map(function (uid) {
-    var p = mp.playersCache[uid]; return { uid: uid, name: p.name, score: p.score || 0 };
+    var p = mp.playersCache[uid]; return { uid: uid, name: p.name, score: p.score || 0, left: !!p.left };
   }).sort(function (a, b) { return b.score - a.score; });
   var list = document.getElementById(containerId);
   list.innerHTML = '';
@@ -2164,7 +2205,7 @@ function renderTotalLeaderboard(containerId) {
     div.className = 'score-row';
     div.innerHTML =
       '<div class="score-rank ' + (i === 0 ? 'first' : i === 1 ? 'second' : '') + '">' + (i + 1) + '</div>' +
-      '<div class="score-name">' + escapeHtml(p.name) + '</div>' +
+      '<div class="score-name">' + escapeHtml(p.name) + (p.left ? '<span class="player-left-badge">退出しました</span>' : '') + '</div>' +
       '<div class="score-pts">' + p.score + '<span>点</span></div>';
     list.appendChild(div);
   });
@@ -2174,11 +2215,11 @@ function renderTotalLeaderboard(containerId) {
 function renderRoundScoreList() {
   var rows = Object.keys(mp.currentAnswersCache).map(function (uid) {
     var a = mp.currentAnswersCache[uid];
-    return { uid: uid, name: a.name, points: a.pointsAwarded || 0, correctCount: a.correctCount, totalCount: a.totalCount };
+    return { uid: uid, name: a.name, points: a.pointsAwarded || 0, correctCount: a.correctCount, totalCount: a.totalCount, left: !!(mp.playersCache[uid] && mp.playersCache[uid].left) };
   });
   Object.keys(mp.playersCache).forEach(function (uid) {
     if (!rows.some(function (r) { return r.uid === uid; })) {
-      rows.push({ uid: uid, name: mp.playersCache[uid].name, points: 0 });
+      rows.push({ uid: uid, name: mp.playersCache[uid].name, points: 0, left: !!mp.playersCache[uid].left });
     }
   });
   rows.sort(function (a, b) { return b.points - a.points; });
@@ -2190,7 +2231,7 @@ function renderRoundScoreList() {
     div.className = 'score-row';
     div.innerHTML =
       '<div class="score-rank ' + (i === 0 ? 'first' : i === 1 ? 'second' : '') + '">' + (i + 1) + '</div>' +
-      '<div class="score-name">' + escapeHtml(r.name) + sub + '</div>' +
+      '<div class="score-name">' + escapeHtml(r.name) + sub + (r.left ? '<span class="player-left-badge">退出しました</span>' : '') + '</div>' +
       '<div class="score-delta ' + (r.points > 0 ? 'gain' : 'zero') + '">' + (r.points > 0 ? ('+' + r.points) : '×') + '</div>';
     roundList.appendChild(div);
   });
@@ -2203,6 +2244,7 @@ function enterReveal() {
   var idx = mp.revealedForIndex;
   var word = mp.questions[idx];
   document.getElementById('result-answer').textContent = word;
+  document.getElementById('result-round-label').textContent = '問題 ' + (idx + 1) + ' / ' + mp.questions.length;
   renderMarkers(true);
 
   var rows = renderRoundScoreList();
@@ -2243,7 +2285,7 @@ function renderFinalBoard() {
     div.className = 'score-row';
     div.innerHTML =
       '<div class="score-rank ' + (i === 0 ? 'first' : '') + '" style="font-size:22px">' + (medals[i] || (i + 1)) + '</div>' +
-      '<div class="score-name">' + escapeHtml(p.name) + '</div>' +
+      '<div class="score-name">' + escapeHtml(p.name) + (p.left ? '<span class="player-left-badge">退出しました</span>' : '') + '</div>' +
       '<div class="score-pts">' + p.score + '<span>点</span></div>';
     list.appendChild(div);
   });
