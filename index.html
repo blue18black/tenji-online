@@ -175,10 +175,18 @@
     background: var(--ink); color: #fff; font-size: 10px; font-weight: 800;
     display: flex; align-items: center; justify-content: center;
     border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    animation: pop .3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: markerPop .3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   .timer-marker.correct { background: var(--hit); }
   .timer-marker.wrong { background: var(--miss); }
+  /* pop は transform:scale(...) しか持たないため、.timer-marker 自身の
+     translate(-50%,-50%) による中央寄せがアニメーション中だけ無効になり、
+     終了した瞬間に位置がカクッとずれて見える(がたつき)。専用キーフレームで
+     translateを常に含めて中央寄せを保つ。 */
+  @keyframes markerPop {
+    from { transform: translate(-50%, -50%) scale(.5); opacity: 0; }
+    to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
 
   /* ── BRAILLE CELLS (shared: decorative-ish but functional tap/display) ── */
   :root { --dot-size: 30px; --cell-gap: 6px; --within-gap: 3px; --cell-pad: 4px; --dot-gap: 3px; }
@@ -485,9 +493,9 @@
     <button class="btn btn-secondary btn-sm" data-qcount="15" style="flex:1">15問</button>
   </div>
 
-  <div class="spacer"></div>
+  <div class="spacer" style="min-height:20px"></div>
 
-  <div class="btn-stack">
+  <div class="btn-stack" style="margin-top:8px">
     <button class="btn btn-accent" id="start-btn" onclick="startGame()">ゲームスタート</button>
   </div>
   </div>
@@ -1259,6 +1267,10 @@ function createAnswerEngine(dom) {
     if (isOnLastStep() && hooks.autoFinishDelayMs != null) {
       state.completedAtMs = (hooks.now || Date.now)();
       dom.checkBtn.classList.add("hidden");
+      // 自動送信(finishCurrentWord)はこの数秒後だが、相手のタイマーバーに
+      // できるだけリアルタイムでマーカーを出したいので、解き終わった瞬間に
+      // 軽量な通知だけ先に送る（採点結果の確定送信は従来通り自動送信時）。
+      hooks.onLastStepChecked && hooks.onLastStepChecked(state.completedAtMs);
       state.autoFinishTimer = window.setTimeout(finishCurrentWord, hooks.autoFinishDelayMs);
     }
   }
@@ -1816,6 +1828,7 @@ function enterQuestion() {
     onCorrectFeedback: function () {},
     autoFinishDelayMs: MP_AUTO_FINISH_DELAY_MS,
     now: estimatedServerNow,
+    onLastStepChecked: function (completedAtMs) { pingMyAnswerMarker(completedAtMs); },
     onFinish: function (allCorrect, characters, completedAtMs) { submitOnlineAnswer(characters, completedAtMs); }
   });
 
@@ -1866,8 +1879,23 @@ function onTimerExpired() {
 function maybeEarlyReveal() {
   if (!mp.isHost) return;
   var totalPlayers = Object.keys(mp.playersCache).length;
-  var totalAnswered = Object.keys(mp.currentAnswersCache).length;
+  // pingMyAnswerMarker()による先行通知(採点前の仮データ、answeredAtのみ)は
+  // 「回答済み」に数えない。本採点の書き込み(pointsAwardedを持つ)が届いた
+  // 人数だけで判定することで、結果発表のタイミング自体は従来通りに保つ。
+  var totalAnswered = Object.keys(mp.currentAnswersCache).filter(function (uid) {
+    return typeof mp.currentAnswersCache[uid].pointsAwarded === 'number';
+  }).length;
   if (totalPlayers > 0 && totalAnswered >= totalPlayers) triggerReveal();
+}
+
+// 最後の文字を答え合わせした瞬間に送る軽量な通知。タイマーバーのマーカーが
+// 名前・位置だけでもできるだけリアルタイムに出るようにする(採点結果はまだ無い)。
+// 既存の answers/{uid} ルールで書き込み可能なフィールドだけを使うため、
+// セキュリティルールの追加変更は不要。
+function pingMyAnswerMarker(completedAtMs) {
+  update(ref(db, 'rooms/' + mp.roomId + '/questionsProgress/' + mp.currentQuestionIndex + '/answers/' + mp.myId), {
+    uid: mp.myId, name: mp.myName, answeredAt: completedAtMs
+  }).catch(function () {});
 }
 
 function computePoints(elapsedMs, durationMs) {
