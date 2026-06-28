@@ -567,8 +567,6 @@
       <div class="status-sub">他のプレイヤーの回答を待っています</div>
       <div class="waiting-dots"><span></span><span></span><span></span></div>
     </div>
-
-    <button class="btn btn-danger btn-sm hidden" id="end-game-btn" type="button" style="width:100%; margin-top:14px" onclick="endGame()">ゲームを終了する</button>
   </div>
 </div>
 
@@ -599,6 +597,8 @@
     <div class="status-sub" id="next-round-label">次の問題まで</div>
     <div class="countdown-number-sm" id="next-round-countdown">5</div>
   </div>
+
+  <button class="btn btn-danger btn-sm hidden" id="end-game-btn" type="button" style="width:100%; margin-top:14px" onclick="endGame()">ここまでの結果でゲームを終了する</button>
   </div>
 </div>
 
@@ -621,13 +621,13 @@
   <div class="spacer"></div>
 
   <div class="btn-stack" id="final-actions-host">
-    <button class="btn btn-accent" onclick="playAgain()">もう一度プレイ</button>
+    <button class="btn btn-accent" onclick="playAgain()">ロビーへ戻る</button>
   </div>
   <div class="status-card hidden" id="final-actions-guest" style="text-align:center; margin-bottom:12px">
-    <div class="status-sub">ホストが「もう一度プレイ」を選ぶと、ロビーに戻ります</div>
+    <div class="status-sub">ホストが「ロビーへ戻る」を選ぶと、ロビーに戻ります</div>
   </div>
 
-  <button class="btn btn-secondary" style="margin-top:12px" onclick="location.reload()">タイトルにもどる</button>
+  <button class="btn btn-secondary" style="margin-top:12px" onclick="disbandAndExit()">解散して終了</button>
   </div>
 </div>
 
@@ -1753,21 +1753,12 @@ function nextRound() {
 // ホストがその場でゲームを切り上げ、現在の累積スコアで最終結果に進む。今
 // 表示されていた問題の分は採点に含めない。すでに回答していた人がいた場合は、
 // その問題で入った加点だけをトランザクションで打ち消してから終了する。
+// 結果発表画面に置く「ゲームを終了する」。この画面に来ている時点で今の問題は
+// 全員の採点が確定済みなので、特別な取り消し処理は不要でそのまま最終結果へ進む。
 window.endGame = async function () {
   if (!mp.isHost || !mp.roomId) return;
-  if (!confirm('ゲームを終了して、ここまでの結果を表示しますか？今の問題の点数は反映されません。')) return;
+  if (!confirm('ここまでの結果でゲームを終了しますか？')) return;
   try {
-    stopTimer();
-    var answersSnap = await get(ref(db, 'rooms/' + mp.roomId + '/questionsProgress/' + mp.currentQuestionIndex + '/answers'));
-    var answers = answersSnap.val() || {};
-    var undoPromises = Object.keys(answers).map(function (uid) {
-      var pts = answers[uid].pointsAwarded || 0;
-      if (pts <= 0) return Promise.resolve();
-      return runTransaction(ref(db, 'rooms/' + mp.roomId + '/players/' + uid + '/score'), function (current) {
-        return (current || 0) - pts;
-      });
-    });
-    await Promise.all(undoPromises);
     await update(ref(db, 'rooms/' + mp.roomId), { status: 'finished' });
   } catch (err) {
     console.error('ゲーム終了に失敗しました', err);
@@ -1869,6 +1860,26 @@ window.leaveRoom = function () {
     mp.leavingVoluntarily = false;
     alert('退場できませんでした。通信状況を確認してください。');
   });
+};
+
+// 最終結果画面の「解散して終了」。ホストならルームごと削除し、ゲストなら
+// 自分の入室記録だけを消してからタイトルに戻る。削除に失敗しても(通信状況等)
+// ページの再読み込み自体は必ず行い、確実にタイトルへ戻れるようにする。
+window.disbandAndExit = function () {
+  if (mp.isHost && mp.roomId) {
+    if (!confirm('ルームを解散して終了しますか？')) return;
+    mp.leavingVoluntarily = true;
+    remove(ref(db, 'rooms/' + mp.roomId)).catch(function () {}).then(function () {
+      location.reload();
+    });
+  } else if (mp.roomId && mp.myId) {
+    mp.leavingVoluntarily = true;
+    remove(ref(db, 'rooms/' + mp.roomId + '/players/' + mp.myId)).catch(function () {}).then(function () {
+      location.reload();
+    });
+  } else {
+    location.reload();
+  }
 };
 
 // ロビーでゲームが開始されないまま90秒経過したら自動でルームを解散し、
@@ -2059,7 +2070,6 @@ function enterQuestion() {
   document.getElementById('round-label').textContent = '問題 ' + (mp.currentQuestionIndex + 1) + ' / ' + mp.questions.length;
   var myScore = (mp.playersCache[mp.myId] && mp.playersCache[mp.myId].score) || 0;
   document.getElementById('my-score-label').textContent = myScore + '点';
-  document.getElementById('end-game-btn').classList.toggle('hidden', !mp.isHost);
 
   var word = mp.questions[mp.currentQuestionIndex];
   mpEngine.load(mp.mode === 'number' ? 'number' : mp.mode, word, {
@@ -2300,6 +2310,8 @@ function enterReveal() {
 
   var isLastRound = idx + 1 >= mp.questions.length;
   document.getElementById('next-round-label').textContent = isLastRound ? '最終結果まで' : '次の問題まで';
+  // 最後の問題ならどうせ次で自動的に最終結果になるので、終了ボタンは出さない。
+  document.getElementById('end-game-btn').classList.toggle('hidden', !mp.isHost || isLastRound);
   startNextRoundCountdown();
 }
 
